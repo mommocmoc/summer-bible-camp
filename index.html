@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>요리사 인증샷 찍기</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.7.0/p5.min.js"></script>
+    <script src="https://unpkg.com/ml5@latest/dist/ml5.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🧑‍🍳 요리사 인증샷 찍기</h1>
+            <p>카메라 앞에 서면 요리사 모자와 앞치마가 자동으로 씌워집니다!</p>
+        </header>
+
+        <main>
+            <div class="camera-container">
+                <div id="canvas-container"></div>
+                <div class="overlay-preview" id="overlay-preview"></div>
+            </div>
+
+            <div class="controls">
+                <div class="camera-controls">
+                    <button id="switch-camera" class="btn btn-secondary">
+                        📷 카메라 전환
+                    </button>
+                    <select id="camera-select" class="camera-select">
+                        <option value="">카메라 선택...</option>
+                    </select>
+                </div>
+
+                <div class="capture-controls">
+                    <button id="capture-photo" class="btn btn-primary">
+                        📸 사진 찍기 (필터 포함)
+                    </button>
+                    <button id="capture-original" class="btn btn-secondary">
+                        📷 원본 사진 찍기
+                    </button>
+                    <button id="capture-both" class="btn btn-success">
+                        🎭 둘 다 찍기
+                    </button>
+                    <button id="download-photo" class="btn btn-success" style="display: none;">
+                        💾 사진 저장
+                    </button>
+                    <button id="download-original" class="btn btn-success" style="display: none;">
+                        💾 원본 저장
+                    </button>
+                </div>
+
+                <div class="overlay-controls">
+                    <label>
+                        <input type="checkbox" id="show-hat" checked> 요리사 모자
+                    </label>
+                    <label>
+                        <input type="checkbox" id="show-apron" checked> 앞치마
+                    </label>
+                    <label>
+                        <input type="checkbox" id="show-background" checked> 배경 효과
+                    </label>
+                    <label>
+                        <input type="checkbox" id="debug-mode"> 🔍 디버그 모드
+                    </label>
+                </div>
+
+                <div class="adjustment-controls">
+                    <h4>위치 조정</h4>
+                    <div class="slider-group">
+                        <label for="hat-offset">모자 높이: <span id="hat-offset-value">-20</span>px</label>
+                        <input type="range" id="hat-offset" min="-60" max="20" value="-20" class="slider">
+                    </div>
+                    <div class="slider-group">
+                        <label for="hat-size">모자 크기: <span id="hat-size-value">100</span>%</label>
+                        <input type="range" id="hat-size" min="50" max="150" value="100" class="slider">
+                    </div>
+                    <div class="slider-group">
+                        <label for="apron-offset">앞치마 위치: <span id="apron-offset-value">0</span>px</label>
+                        <input type="range" id="apron-offset" min="-50" max="50" value="0" class="slider">
+                    </div>
+                    <div class="slider-group">
+                        <label for="apron-size">앞치마 크기: <span id="apron-size-value">120</span>%</label>
+                        <input type="range" id="apron-size" min="80" max="200" value="120" class="slider">
+                    </div>
+                </div>
+            </div>
+
+            <div class="preview-section" id="preview-section" style="display: none;">
+                <h3>촬영된 사진</h3>
+                <canvas id="captured-photo"></canvas>
+            </div>
+        </main>
+
+        <footer>
+            <p>🏕️ Summer Bible Camp 2024</p>
+        </footer>
+    </div>
+
+    <div class="loading" id="loading">
+        <div class="spinner"></div>
+        <p>카메라와 AI 모델을 불러오는 중...</p>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
