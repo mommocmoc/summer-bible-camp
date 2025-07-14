@@ -493,44 +493,71 @@ function capturePhoto() {
         return;
     }
     
-    captureCanvas.clear();
+    // 실제 비디오 크기 가져오기
+    const videoWidth = video.elt.videoWidth || video.width;
+    const videoHeight = video.elt.videoHeight || video.height;
+    
+    console.log('Video dimensions:', videoWidth, 'x', videoHeight);
+    console.log('Canvas dimensions:', CANVAS_WIDTH, 'x', CANVAS_HEIGHT);
+    
+    // 캡처 캔버스를 비디오 실제 크기로 생성
+    const tempCanvas = createGraphics(videoWidth, videoHeight);
+    
+    tempCanvas.clear();
     
     if (showBackground) {
-        drawBackgroundOnCanvas(captureCanvas);
+        drawBackgroundOnCanvas(tempCanvas, videoWidth, videoHeight);
     }
     
-    captureCanvas.push();
-    captureCanvas.scale(-1, 1);
-    captureCanvas.image(video, -CANVAS_WIDTH, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-    captureCanvas.pop();
+    // 비디오를 실제 크기로 그리기 (미러링)
+    tempCanvas.push();
+    tempCanvas.scale(-1, 1);
+    tempCanvas.image(video, -videoWidth, 0, videoWidth, videoHeight);
+    tempCanvas.pop();
     
+    // 오버레이 추가 (좌표 스케일링)
     if (poses.length > 0) {
         const pose = poses[0];
+        
+        const scaleX = videoWidth / CANVAS_WIDTH;
+        const scaleY = videoHeight / CANVAS_HEIGHT;
         
         const nose = pose.keypoints.find(kp => kp.name === 'nose');
         const leftShoulder = pose.keypoints.find(kp => kp.name === 'left_shoulder');
         const rightShoulder = pose.keypoints.find(kp => kp.name === 'right_shoulder');
         
         if (showHat && nose && nose.confidence > 0.3) {
-            const mirroredNose = { x: CANVAS_WIDTH - nose.x, y: nose.y };
-            drawChefHatOnCanvas(captureCanvas, mirroredNose);
+            const scaledNose = { 
+                x: videoWidth - (nose.x * scaleX), 
+                y: nose.y * scaleY 
+            };
+            drawChefHatOnCanvas(tempCanvas, scaledNose, scaleX, scaleY);
         }
         
         if (showApron && leftShoulder && rightShoulder && 
             leftShoulder.confidence > 0.3 && rightShoulder.confidence > 0.3) {
-            const mirroredLeftShoulder = { x: CANVAS_WIDTH - leftShoulder.x, y: leftShoulder.y };
-            const mirroredRightShoulder = { x: CANVAS_WIDTH - rightShoulder.x, y: rightShoulder.y };
-            drawApronOnCanvas(captureCanvas, mirroredLeftShoulder, mirroredRightShoulder);
+            const scaledLeftShoulder = { 
+                x: videoWidth - (leftShoulder.x * scaleX), 
+                y: leftShoulder.y * scaleY 
+            };
+            const scaledRightShoulder = { 
+                x: videoWidth - (rightShoulder.x * scaleX), 
+                y: rightShoulder.y * scaleY 
+            };
+            drawApronOnCanvas(tempCanvas, scaledLeftShoulder, scaledRightShoulder, scaleX, scaleY);
         }
     }
     
+    // 결과를 표시용 캔버스에 그리기
     const capturedPhotoCanvas = document.getElementById('captured-photo');
-    capturedPhotoCanvas.width = CANVAS_WIDTH;
-    capturedPhotoCanvas.height = CANVAS_HEIGHT;
+    capturedPhotoCanvas.width = videoWidth;
+    capturedPhotoCanvas.height = videoHeight;
     const ctx = capturedPhotoCanvas.getContext('2d');
     
-    // 캡처된 캔버스를 직접 그리기
-    ctx.drawImage(captureCanvas.canvas, 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+    ctx.drawImage(tempCanvas.canvas, 0, 0);
+    
+    // 전역 변수에 저장 (다운로드용)
+    capturedWithFilters = tempCanvas;
     
     document.getElementById('preview-section').style.display = 'block';
     document.getElementById('download-photo').style.display = 'inline-block';
@@ -540,84 +567,94 @@ function capturePhoto() {
     });
 }
 
-function drawChefHatOnCanvas(canvas, nose) {
+function drawChefHatOnCanvas(canvas, nose, scaleX = 1, scaleY = 1) {
     canvas.fill(255, 255, 255, 200);
     canvas.stroke(200);
-    canvas.strokeWeight(2);
+    canvas.strokeWeight(2 * Math.max(scaleX, scaleY));
     
-    const hatWidth = 100 * (hatSize / 100);
-    const hatHeight = 80 * (hatSize / 100);
+    const hatWidth = 100 * (hatSize / 100) * scaleX;
+    const hatHeight = 80 * (hatSize / 100) * scaleY;
     const hatX = nose.x - hatWidth / 2;
-    const hatY = nose.y - hatHeight + hatOffset;
+    const hatY = nose.y - hatHeight + (hatOffset * scaleY);
     
-    canvas.ellipse(nose.x, hatY + 20, hatWidth, 40);
-    canvas.rect(hatX + 20, hatY, hatWidth - 40, 50);
+    canvas.ellipse(nose.x, hatY + 20 * scaleY, hatWidth, 40 * scaleY);
+    canvas.rect(hatX + 20 * scaleX, hatY, hatWidth - 40 * scaleX, 50 * scaleY);
     
     canvas.fill(0);
     canvas.textAlign(CENTER, CENTER);
-    canvas.textSize(12);
-    canvas.text('👨‍🍳', nose.x, hatY + 25);
+    canvas.textSize(12 * Math.max(scaleX, scaleY));
+    canvas.text('👨‍🍳', nose.x, hatY + 25 * scaleY);
 }
 
-function drawApronOnCanvas(canvas, leftShoulder, rightShoulder) {
+function drawApronOnCanvas(canvas, leftShoulder, rightShoulder, scaleX = 1, scaleY = 1) {
     const shoulderMidX = (leftShoulder.x + rightShoulder.x) / 2;
     const shoulderMidY = (leftShoulder.y + rightShoulder.y) / 2;
     
     canvas.fill(255, 255, 255, 180);
     canvas.stroke(200);
-    canvas.strokeWeight(2);
+    canvas.strokeWeight(2 * Math.max(scaleX, scaleY));
     
     const apronWidth = Math.abs(leftShoulder.x - rightShoulder.x) * (apronSize / 100);
     const apronHeight = apronWidth * 1.3;
     const apronX = shoulderMidX - apronWidth / 2;
-    const apronY = shoulderMidY + apronOffset;
+    const apronY = shoulderMidY + (apronOffset * scaleY);
     
-    canvas.rect(apronX, apronY, apronWidth, apronHeight, 10);
+    canvas.rect(apronX, apronY, apronWidth, apronHeight, 10 * Math.max(scaleX, scaleY));
     
-    const neckStrapY = shoulderMidY - 20;
-    canvas.line(leftShoulder.x, leftShoulder.y, apronX + 20, neckStrapY);
-    canvas.line(rightShoulder.x, rightShoulder.y, apronX + apronWidth - 20, neckStrapY);
+    const neckStrapY = shoulderMidY - 20 * scaleY;
+    canvas.line(leftShoulder.x, leftShoulder.y, apronX + 20 * scaleX, neckStrapY);
+    canvas.line(rightShoulder.x, rightShoulder.y, apronX + apronWidth - 20 * scaleX, neckStrapY);
     
     canvas.fill(0);
     canvas.textAlign(CENTER, CENTER);
-    canvas.textSize(16);
+    canvas.textSize(16 * Math.max(scaleX, scaleY));
     canvas.text('🍳', shoulderMidX, apronY + apronHeight / 3);
 }
 
-function drawBackgroundOnCanvas(canvas) {
+function drawBackgroundOnCanvas(canvas, canvasWidth = CANVAS_WIDTH, canvasHeight = CANVAS_HEIGHT) {
     canvas.background(135, 206, 235);
+    
+    const scaleX = canvasWidth / CANVAS_WIDTH;
+    const scaleY = canvasHeight / CANVAS_HEIGHT;
     
     canvas.fill(255, 255, 255, 100);
     canvas.noStroke();
     for (let i = 0; i < 15; i++) {
-        let x = (i * 50) % (CANVAS_WIDTH + 100);
-        let y = 50;
-        canvas.ellipse(x, y, 30, 30);
+        let x = (i * 50 * scaleX) % (canvasWidth + 100 * scaleX);
+        let y = 50 * scaleY;
+        canvas.ellipse(x, y, 30 * scaleX, 30 * scaleY);
     }
     
     canvas.fill(255, 255, 255, 150);
     for (let i = 0; i < 10; i++) {
-        let x = (i * 80) % (CANVAS_WIDTH + 100);
-        let y = CANVAS_HEIGHT - 100;
-        canvas.ellipse(x, y, 20, 20);
+        let x = (i * 80 * scaleX) % (canvasWidth + 100 * scaleX);
+        let y = canvasHeight - 100 * scaleY;
+        canvas.ellipse(x, y, 20 * scaleX, 20 * scaleY);
     }
     
     canvas.fill(255, 255, 255, 80);
     canvas.textAlign(LEFT, TOP);
-    canvas.textSize(40);
-    canvas.text('🍳', 20, 20);
-    canvas.text('👨‍🍳', CANVAS_WIDTH - 80, 20);
-    canvas.text('🥄', 20, CANVAS_HEIGHT - 60);
-    canvas.text('🍽️', CANVAS_WIDTH - 80, CANVAS_HEIGHT - 60);
+    canvas.textSize(40 * Math.max(scaleX, scaleY));
+    canvas.text('🍳', 20 * scaleX, 20 * scaleY);
+    canvas.text('👨‍🍳', canvasWidth - 80 * scaleX, 20 * scaleY);
+    canvas.text('🥄', 20 * scaleX, canvasHeight - 60 * scaleY);
+    canvas.text('🍽️', canvasWidth - 80 * scaleX, canvasHeight - 60 * scaleY);
 }
 
 function downloadPhoto() {
-    const canvas = document.getElementById('captured-photo');
-    if (canvas) {
+    if (capturedWithFilters) {
         const link = document.createElement('a');
         link.download = `chef-photo-${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.png`;
-        link.href = canvas.toDataURL();
+        link.href = capturedWithFilters.canvas.toDataURL();
         link.click();
+    } else {
+        const canvas = document.getElementById('captured-photo');
+        if (canvas) {
+            const link = document.createElement('a');
+            link.download = `chef-photo-${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.png`;
+            link.href = canvas.toDataURL();
+            link.click();
+        }
     }
 }
 
@@ -661,22 +698,26 @@ function captureOriginalPhoto() {
         return;
     }
     
-    const originalCanvas = createGraphics(CANVAS_WIDTH, CANVAS_HEIGHT);
+    // 실제 비디오 크기 가져오기
+    const videoWidth = video.elt.videoWidth || video.width;
+    const videoHeight = video.elt.videoHeight || video.height;
+    
+    const originalCanvas = createGraphics(videoWidth, videoHeight);
     
     // 원본만 캡처 (오버레이 없음)
     originalCanvas.push();
     originalCanvas.scale(-1, 1);
-    originalCanvas.image(video, -CANVAS_WIDTH, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+    originalCanvas.image(video, -videoWidth, 0, videoWidth, videoHeight);
     originalCanvas.pop();
     
     capturedOriginal = originalCanvas;
     
     // 원본 사진 표시
     const capturedPhotoCanvas = document.getElementById('captured-photo');
-    capturedPhotoCanvas.width = CANVAS_WIDTH;
-    capturedPhotoCanvas.height = CANVAS_HEIGHT;
+    capturedPhotoCanvas.width = videoWidth;
+    capturedPhotoCanvas.height = videoHeight;
     const ctx = capturedPhotoCanvas.getContext('2d');
-    ctx.drawImage(originalCanvas.canvas, 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+    ctx.drawImage(originalCanvas.canvas, 0, 0);
     
     document.getElementById('preview-section').style.display = 'block';
     document.getElementById('download-original').style.display = 'inline-block';
@@ -696,11 +737,15 @@ function captureBothPhotos() {
     // 필터 포함된 버전 캡처
     capturePhoto();
     
+    // 실제 비디오 크기 가져오기
+    const videoWidth = video.elt.videoWidth || video.width;
+    const videoHeight = video.elt.videoHeight || video.height;
+    
     // 원본 버전도 캡처
-    const originalCanvas = createGraphics(CANVAS_WIDTH, CANVAS_HEIGHT);
+    const originalCanvas = createGraphics(videoWidth, videoHeight);
     originalCanvas.push();
     originalCanvas.scale(-1, 1);
-    originalCanvas.image(video, -CANVAS_WIDTH, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+    originalCanvas.image(video, -videoWidth, 0, videoWidth, videoHeight);
     originalCanvas.pop();
     
     capturedOriginal = originalCanvas;
