@@ -30,8 +30,27 @@ const CANVAS_WIDTH = 640;
 const CANVAS_HEIGHT = 480;
 
 function preload() {
-    chefHatImg = loadImage('assets/chef-hat.png');
-    apronImg = loadImage('assets/apron.png');
+    // GitHub Pages 호환성을 위한 에셋 로딩
+    try {
+        chefHatImg = loadImage('./assets/chef-hat.png', 
+            () => console.log('Chef hat image loaded successfully'),
+            () => {
+                console.warn('Chef hat image failed to load, using fallback');
+                chefHatImg = null;
+            }
+        );
+        apronImg = loadImage('./assets/apron.png',
+            () => console.log('Apron image loaded successfully'),
+            () => {
+                console.warn('Apron image failed to load, using fallback');
+                apronImg = null;
+            }
+        );
+    } catch (error) {
+        console.error('Error loading images:', error);
+        chefHatImg = null;
+        apronImg = null;
+    }
 }
 
 function setup() {
@@ -264,16 +283,18 @@ function draw() {
     if (debugMode) {
         fill(255, 255, 255, 200);
         noStroke();
-        rect(10, height - 120, 300, 110);
+        rect(10, height - 150, 350, 140);
         fill(0);
         textAlign(LEFT, TOP);
         textSize(12);
-        text(`Video Ready: ${isVideoReady}`, 15, height - 110);
-        text(`Model Loaded: ${isModelLoaded}`, 15, height - 95);
-        text(`BodyPose Initialized: ${bodyPose ? 'Yes' : 'No'}`, 15, height - 80);
-        text(`Poses Array Length: ${poses.length}`, 15, height - 65);
-        text(`Video Size: ${video ? video.width + 'x' + video.height : 'N/A'}`, 15, height - 50);
-        text(`Canvas Size: ${width}x${height}`, 15, height - 35);
+        text(`Video Ready: ${isVideoReady}`, 15, height - 140);
+        text(`Model Loaded: ${isModelLoaded}`, 15, height - 125);
+        text(`BodyPose Initialized: ${bodyPose ? 'Yes' : 'No'}`, 15, height - 110);
+        text(`Poses Array Length: ${poses.length}`, 15, height - 95);
+        text(`Video Size: ${video ? video.width + 'x' + video.height : 'N/A'}`, 15, height - 80);
+        text(`Canvas Size: ${width}x${height}`, 15, height - 65);
+        text(`Chef Hat Loaded: ${chefHatImg && chefHatImg.width > 0 ? 'Yes' : 'No (using fallback)'}`, 15, height - 50);
+        text(`Apron Loaded: ${apronImg && apronImg.width > 0 ? 'Yes' : 'No (using fallback)'}`, 15, height - 35);
         text(`Frame Count: ${frameCount}`, 15, height - 20);
     }
     
@@ -386,17 +407,19 @@ function drawOverlays() {
 function drawChefHat(nose) {
     const mirroredX = width - nose.x;
     
+    // 이미지가 로드되고 유효한 경우
     if (chefHatImg && chefHatImg.width > 0) {
-        const hatWidth = 120;
-        const hatHeight = 100;
+        const hatWidth = 120 * (hatSize / 100);
+        const hatHeight = 100 * (hatSize / 100);
         const hatX = mirroredX - hatWidth / 2;
-        const hatY = nose.y - hatHeight - 20;
+        const hatY = nose.y - hatHeight + hatOffset;
         
         push();
         tint(255, 220);
         image(chefHatImg, hatX, hatY, hatWidth, hatHeight);
         pop();
     } else {
+        // Fallback: 기본 도형으로 그리기
         fill(255, 255, 255, 200);
         stroke(200);
         strokeWeight(2);
@@ -406,12 +429,13 @@ function drawChefHat(nose) {
         const hatX = mirroredX - hatWidth / 2;
         const hatY = nose.y - hatHeight + hatOffset;
         
+        // 요리사 모자 모양
         ellipse(mirroredX, hatY + 20, hatWidth, 40);
         rect(hatX + 20, hatY, hatWidth - 40, 50);
         
         fill(0);
         textAlign(CENTER, CENTER);
-        textSize(12);
+        textSize(16);
         text('👨‍🍳', mirroredX, hatY + 25);
     }
 }
@@ -420,20 +444,22 @@ function drawApron(leftShoulder, rightShoulder) {
     const mirroredLeftX = width - leftShoulder.x;
     const mirroredRightX = width - rightShoulder.x;
     
+    // 이미지가 로드되고 유효한 경우
     if (apronImg && apronImg.width > 0) {
         const shoulderMidX = (mirroredLeftX + mirroredRightX) / 2;
         const shoulderMidY = (leftShoulder.y + rightShoulder.y) / 2;
         
-        const apronWidth = Math.abs(mirroredLeftX - mirroredRightX) * 1.5;
+        const apronWidth = Math.abs(mirroredLeftX - mirroredRightX) * (apronSize / 100) * 1.5;
         const apronHeight = apronWidth * 1.2;
         const apronX = shoulderMidX - apronWidth / 2;
-        const apronY = shoulderMidY;
+        const apronY = shoulderMidY + apronOffset;
         
         push();
         tint(255, 220);
         image(apronImg, apronX, apronY, apronWidth, apronHeight);
         pop();
     } else {
+        // Fallback: 기본 도형으로 그리기
         const shoulderMidX = (mirroredLeftX + mirroredRightX) / 2;
         const shoulderMidY = (leftShoulder.y + rightShoulder.y) / 2;
         
@@ -446,8 +472,10 @@ function drawApron(leftShoulder, rightShoulder) {
         const apronX = shoulderMidX - apronWidth / 2;
         const apronY = shoulderMidY + apronOffset;
         
+        // 앞치마 모양
         rect(apronX, apronY, apronWidth, apronHeight, 10);
         
+        // 끈
         const neckStrapY = shoulderMidY - 20;
         line(mirroredLeftX, leftShoulder.y, apronX + 20, neckStrapY);
         line(mirroredRightX, rightShoulder.y, apronX + apronWidth - 20, neckStrapY);

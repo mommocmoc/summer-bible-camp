@@ -32,7 +32,15 @@ Summer Bible Camp을 위한 실시간 요리사 모자와 앞치마 오버레이
 
 ## 🚀 빠른 시작
 
-### 1. 로컬 서버 실행
+### 🌐 온라인에서 바로 사용
+GitHub Pages에 배포된 버전을 바로 사용할 수 있습니다:
+```
+https://your-username.github.io/summer-bible-camp
+```
+
+### 💻 로컬에서 실행
+
+#### 1. 로컬 서버 실행
 ```bash
 # Python 3 사용
 python3 -m http.server 8000
@@ -43,13 +51,19 @@ npx serve .
 # 또는 Live Server (VS Code Extension) 사용
 ```
 
-### 2. 브라우저에서 접속
+#### 2. 브라우저에서 접속
 ```
 http://localhost:8000
 ```
 
-### 3. 카메라 권한 허용
+#### 3. 카메라 권한 허용
 브라우저에서 카메라 접근 권한을 허용하면 바로 사용 가능합니다.
+
+### 📦 GitHub Pages 배포
+1. GitHub 저장소의 Settings → Pages 메뉴로 이동
+2. Source를 "Deploy from a branch"로 설정
+3. Branch를 "main"으로 선택
+4. 몇 분 후 `https://your-username.github.io/repository-name`에서 접속 가능
 
 ## 💻 기술 스택
 
