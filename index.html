@@ -29,6 +29,9 @@
                     <select id="camera-select" class="camera-select">
                         <option value="">카메라 선택...</option>
                     </select>
+                    <button id="fullscreen-toggle" class="btn btn-primary">
+                        📺 전체화면 모드
+                    </button>
                 </div>
 
                 <div class="download-controls">
@@ -120,6 +123,20 @@
     <div class="loading" id="loading">
         <div class="spinner"></div>
         <p>카메라와 AI 모델을 불러오는 중...</p>
+    </div>
+
+    <!-- 전체화면 모드 -->
+    <div class="fullscreen-mode" id="fullscreen-mode">
+        <div class="fullscreen-canvas-container" id="fullscreen-canvas-container"></div>
+        <div class="fullscreen-controls">
+            <button id="exit-fullscreen" class="btn btn-secondary">
+                🚪 전체화면 나가기
+            </button>
+            <p class="fullscreen-hint">📷 화면을 클릭하면 3초 후 자동 촬영됩니다</p>
+        </div>
+        <div class="countdown-overlay" id="countdown-overlay">
+            <div class="countdown-number" id="countdown-number">3</div>
+        </div>
     </div>
 
     <script src="script.js"></script>

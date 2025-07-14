@@ -31,6 +31,11 @@ let capturedOriginal = null;
 // 사진 갤러리 배열
 let photoGallery = [];
 
+// 전체화면 모드 변수들
+let isFullscreenMode = false;
+let fullscreenCanvas = null;
+let countdownTimer = null;
+
 const CANVAS_WIDTH = 640;
 const CANVAS_HEIGHT = 480;
 
@@ -253,6 +258,10 @@ function setupUI() {
     document.getElementById('capture-original').addEventListener('click', captureOriginalPhoto);
     document.getElementById('capture-both').addEventListener('click', captureBothPhotos);
     document.getElementById('download-original').addEventListener('click', downloadOriginalPhoto);
+    
+    // 전체화면 모드 이벤트 리스너
+    document.getElementById('fullscreen-toggle').addEventListener('click', toggleFullscreenMode);
+    document.getElementById('exit-fullscreen').addEventListener('click', exitFullscreenMode);
 }
 
 async function switchCamera() {
@@ -291,8 +300,8 @@ function draw() {
     image(video, -width, 0, width, height);
     pop();
     
-    // 디버그 정보 표시
-    if (debugMode) {
+    // 디버그 정보 표시 (전체화면 모드가 아닐 때만)
+    if (debugMode && !isFullscreenMode) {
         fill(255, 255, 255, 200);
         noStroke();
         rect(10, height - 150, 350, 140);
@@ -1062,6 +1071,148 @@ async function downloadAllPhotos() {
         downloadBtn.innerHTML = '📦 모든 사진 다운로드 (ZIP)';
         downloadBtn.disabled = false;
     }
+}
+
+function toggleFullscreenMode() {
+    if (!isFullscreenMode) {
+        enterFullscreenMode();
+    } else {
+        exitFullscreenMode();
+    }
+}
+
+function enterFullscreenMode() {
+    if (!video || !isVideoReady) {
+        alert('카메라가 준비되지 않았습니다.');
+        return;
+    }
+    
+    isFullscreenMode = true;
+    
+    // 전체화면 모드 표시
+    const fullscreenMode = document.getElementById('fullscreen-mode');
+    fullscreenMode.style.display = 'flex';
+    
+    // 전체화면 캔버스 생성
+    const container = document.getElementById('fullscreen-canvas-container');
+    
+    // 화면 크기에 맞는 캔버스 크기 계산
+    const windowWidth = window.innerWidth;
+    const windowHeight = window.innerHeight * 0.85; // 컨트롤 공간 확보
+    
+    const videoAspect = CANVAS_WIDTH / CANVAS_HEIGHT;
+    let canvasWidth, canvasHeight;
+    
+    if (windowWidth / windowHeight > videoAspect) {
+        // 세로가 제한 요소
+        canvasHeight = windowHeight;
+        canvasWidth = canvasHeight * videoAspect;
+    } else {
+        // 가로가 제한 요소
+        canvasWidth = windowWidth;
+        canvasHeight = canvasWidth / videoAspect;
+    }
+    
+    // 기존 캔버스 제거
+    if (fullscreenCanvas) {
+        fullscreenCanvas.remove();
+    }
+    
+    // 새 캔버스 생성
+    fullscreenCanvas = createCanvas(canvasWidth, canvasHeight);
+    fullscreenCanvas.parent('fullscreen-canvas-container');
+    
+    // 클릭 이벤트 추가
+    fullscreenCanvas.mousePressed(startCountdown);
+    
+    // 브라우저 전체화면 요청
+    if (container.requestFullscreen) {
+        container.requestFullscreen().catch(console.error);
+    } else if (container.webkitRequestFullscreen) {
+        container.webkitRequestFullscreen();
+    } else if (container.mozRequestFullScreen) {
+        container.mozRequestFullScreen();
+    }
+}
+
+function exitFullscreenMode() {
+    isFullscreenMode = false;
+    
+    // 카운트다운 정리
+    if (countdownTimer) {
+        clearTimeout(countdownTimer);
+        countdownTimer = null;
+    }
+    
+    // 전체화면 모드 숨기기
+    document.getElementById('fullscreen-mode').style.display = 'none';
+    document.getElementById('countdown-overlay').style.display = 'none';
+    
+    // 전체화면 캔버스 제거
+    if (fullscreenCanvas) {
+        fullscreenCanvas.remove();
+        fullscreenCanvas = null;
+    }
+    
+    // 브라우저 전체화면 해제
+    if (document.exitFullscreen) {
+        document.exitFullscreen().catch(console.error);
+    } else if (document.webkitExitFullscreen) {
+        document.webkitExitFullscreen();
+    } else if (document.mozCancelFullScreen) {
+        document.mozCancelFullScreen();
+    }
+    
+    // 원래 캔버스로 돌아가기
+    canvas = createCanvas(CANVAS_WIDTH, CANVAS_HEIGHT);
+    canvas.parent('canvas-container');
+}
+
+function startCountdown() {
+    // 이미 카운트다운 중이면 무시
+    if (countdownTimer) {
+        return;
+    }
+    
+    const countdownOverlay = document.getElementById('countdown-overlay');
+    const countdownNumber = document.getElementById('countdown-number');
+    
+    countdownOverlay.style.display = 'flex';
+    
+    let count = 3;
+    
+    function updateCountdown() {
+        countdownNumber.textContent = count;
+        countdownNumber.style.animation = 'none';
+        // 애니메이션 재시작을 위해 지연
+        setTimeout(() => {
+            countdownNumber.style.animation = 'countdownPulse 1s ease-in-out';
+        }, 10);
+        
+        if (count > 1) {
+            count--;
+            countdownTimer = setTimeout(updateCountdown, 1000);
+        } else {
+            // 카운트다운 완료 - 사진 촬영
+            countdownTimer = setTimeout(() => {
+                countdownOverlay.style.display = 'none';
+                captureFullscreenPhoto();
+                countdownTimer = null;
+            }, 1000);
+        }
+    }
+    
+    updateCountdown();
+}
+
+function captureFullscreenPhoto() {
+    // 원본과 필터 사진 모두 촬영
+    captureBothPhotos();
+    
+    // 잠시 후 전체화면 모드 종료
+    setTimeout(() => {
+        exitFullscreenMode();
+    }, 1000);
 }
 
 window.addEventListener('beforeunload', function() {
