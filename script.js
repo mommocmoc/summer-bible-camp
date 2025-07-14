@@ -31,10 +31,6 @@ let capturedOriginal = null;
 // 사진 갤러리 배열
 let photoGallery = [];
 
-// 전체화면 모드 변수들
-let isFullscreenMode = false;
-let fullscreenCanvas = null;
-let countdownTimer = null;
 
 const CANVAS_WIDTH = 640;
 const CANVAS_HEIGHT = 480;
@@ -258,10 +254,6 @@ function setupUI() {
     document.getElementById('capture-original').addEventListener('click', captureOriginalPhoto);
     document.getElementById('capture-both').addEventListener('click', captureBothPhotos);
     document.getElementById('download-original').addEventListener('click', downloadOriginalPhoto);
-    
-    // 전체화면 모드 이벤트 리스너
-    document.getElementById('fullscreen-toggle').addEventListener('click', toggleFullscreenMode);
-    document.getElementById('exit-fullscreen').addEventListener('click', exitFullscreenMode);
 }
 
 async function switchCamera() {
@@ -300,8 +292,8 @@ function draw() {
     image(video, -width, 0, width, height);
     pop();
     
-    // 디버그 정보 표시 (전체화면 모드가 아닐 때만)
-    if (debugMode && !isFullscreenMode) {
+    // 디버그 정보 표시
+    if (debugMode) {
         fill(255, 255, 255, 200);
         noStroke();
         rect(10, height - 150, 350, 140);
@@ -431,27 +423,15 @@ function drawChefHat(nose) {
     // 실제 오프셋 계산 (UI의 0 = 실제 -100px)
     const actualHatOffset = hatOffset - 100;
     
-    // 전체화면 모드에서의 스케일링 계산
-    let scaleFactor = 1;
-    let scaledOffset = actualHatOffset;
-    
-    if (isFullscreenMode) {
-        // 전체화면에서는 캔버스 크기에 맞게 스케일링
-        scaleFactor = Math.min(width / CANVAS_WIDTH, height / CANVAS_HEIGHT);
-        scaledOffset = actualHatOffset * scaleFactor;
-    }
-    
     // 투명도 계산 (100% = 255, 10% = 25.5)
     const hatAlpha = (hatOpacity / 100) * 255;
     
     // 이미지가 로드되고 유효한 경우
     if (chefHatImg && chefHatImg.width > 0) {
-        const baseHatWidth = 120 * (hatSize / 100);
-        const baseHatHeight = 100 * (hatSize / 100);
-        const hatWidth = baseHatWidth * scaleFactor;
-        const hatHeight = baseHatHeight * scaleFactor;
+        const hatWidth = 120 * (hatSize / 100);
+        const hatHeight = 100 * (hatSize / 100);
         const hatX = mirroredX - hatWidth / 2;
-        const hatY = nose.y - hatHeight + scaledOffset;
+        const hatY = nose.y - hatHeight + actualHatOffset;
         
         push();
         tint(255, hatAlpha);
@@ -461,39 +441,27 @@ function drawChefHat(nose) {
         // Fallback: 기본 도형으로 그리기
         fill(255, 255, 255, hatAlpha * 0.8);
         stroke(200, hatAlpha);
-        strokeWeight(2 * scaleFactor);
+        strokeWeight(2);
         
-        const baseHatWidth = 100 * (hatSize / 100);
-        const baseHatHeight = 80 * (hatSize / 100);
-        const hatWidth = baseHatWidth * scaleFactor;
-        const hatHeight = baseHatHeight * scaleFactor;
+        const hatWidth = 100 * (hatSize / 100);
+        const hatHeight = 80 * (hatSize / 100);
         const hatX = mirroredX - hatWidth / 2;
-        const hatY = nose.y - hatHeight + scaledOffset;
+        const hatY = nose.y - hatHeight + actualHatOffset;
         
         // 요리사 모자 모양
-        ellipse(mirroredX, hatY + 20 * scaleFactor, hatWidth, 40 * scaleFactor);
-        rect(hatX + 20 * scaleFactor, hatY, hatWidth - 40 * scaleFactor, 50 * scaleFactor);
+        ellipse(mirroredX, hatY + 20, hatWidth, 40);
+        rect(hatX + 20, hatY, hatWidth - 40, 50);
         
         fill(0, hatAlpha);
         textAlign(CENTER, CENTER);
-        textSize(16 * scaleFactor);
-        text('👨‍🍳', mirroredX, hatY + 25 * scaleFactor);
+        textSize(16);
+        text('👨‍🍳', mirroredX, hatY + 25);
     }
 }
 
 function drawApron(leftShoulder, rightShoulder) {
     const mirroredLeftX = width - leftShoulder.x;
     const mirroredRightX = width - rightShoulder.x;
-    
-    // 전체화면 모드에서의 스케일링 계산
-    let scaleFactor = 1;
-    let scaledOffset = apronOffset;
-    
-    if (isFullscreenMode) {
-        // 전체화면에서는 캔버스 크기에 맞게 스케일링
-        scaleFactor = Math.min(width / CANVAS_WIDTH, height / CANVAS_HEIGHT);
-        scaledOffset = apronOffset * scaleFactor;
-    }
     
     // 투명도 계산 (100% = 255, 10% = 25.5)
     const apronAlpha = (apronOpacity / 100) * 255;
@@ -506,7 +474,7 @@ function drawApron(leftShoulder, rightShoulder) {
         const apronWidth = Math.abs(mirroredLeftX - mirroredRightX) * (apronSize / 100) * 1.5;
         const apronHeight = apronWidth * 1.2;
         const apronX = shoulderMidX - apronWidth / 2;
-        const apronY = shoulderMidY + scaledOffset;
+        const apronY = shoulderMidY + apronOffset;
         
         push();
         tint(255, apronAlpha);
@@ -519,24 +487,24 @@ function drawApron(leftShoulder, rightShoulder) {
         
         fill(255, 255, 255, apronAlpha * 0.7);
         stroke(200, apronAlpha);
-        strokeWeight(2 * scaleFactor);
+        strokeWeight(2);
         
         const apronWidth = Math.abs(mirroredLeftX - mirroredRightX) * (apronSize / 100);
         const apronHeight = apronWidth * 1.3;
         const apronX = shoulderMidX - apronWidth / 2;
-        const apronY = shoulderMidY + scaledOffset;
+        const apronY = shoulderMidY + apronOffset;
         
         // 앞치마 모양
-        rect(apronX, apronY, apronWidth, apronHeight, 10 * scaleFactor);
+        rect(apronX, apronY, apronWidth, apronHeight, 10);
         
         // 끈
-        const neckStrapY = shoulderMidY - 20 * scaleFactor;
-        line(mirroredLeftX, leftShoulder.y, apronX + 20 * scaleFactor, neckStrapY);
-        line(mirroredRightX, rightShoulder.y, apronX + apronWidth - 20 * scaleFactor, neckStrapY);
+        const neckStrapY = shoulderMidY - 20;
+        line(mirroredLeftX, leftShoulder.y, apronX + 20, neckStrapY);
+        line(mirroredRightX, rightShoulder.y, apronX + apronWidth - 20, neckStrapY);
         
         fill(0, apronAlpha);
         textAlign(CENTER, CENTER);
-        textSize(16 * scaleFactor);
+        textSize(16);
         text('🍳', shoulderMidX, apronY + apronHeight / 3);
     }
 }
@@ -1097,176 +1065,6 @@ async function downloadAllPhotos() {
     }
 }
 
-function toggleFullscreenMode() {
-    if (!isFullscreenMode) {
-        enterFullscreenMode();
-    } else {
-        exitFullscreenMode();
-    }
-}
-
-function enterFullscreenMode() {
-    if (!video || !isVideoReady) {
-        alert('카메라가 준비되지 않았습니다.');
-        return;
-    }
-    
-    isFullscreenMode = true;
-    
-    // 전체화면 모드 표시
-    const fullscreenMode = document.getElementById('fullscreen-mode');
-    fullscreenMode.style.display = 'flex';
-    
-    // 전체화면 캔버스 생성
-    const container = document.getElementById('fullscreen-canvas-container');
-    
-    // 화면 크기에 맞는 캔버스 크기 계산
-    const windowWidth = window.innerWidth;
-    const windowHeight = window.innerHeight * 0.85; // 컨트롤 공간 확보
-    
-    const videoAspect = CANVAS_WIDTH / CANVAS_HEIGHT;
-    let canvasWidth, canvasHeight;
-    
-    if (windowWidth / windowHeight > videoAspect) {
-        // 세로가 제한 요소
-        canvasHeight = windowHeight;
-        canvasWidth = canvasHeight * videoAspect;
-    } else {
-        // 가로가 제한 요소
-        canvasWidth = windowWidth;
-        canvasHeight = canvasWidth / videoAspect;
-    }
-    
-    // 기존 캔버스 제거
-    if (fullscreenCanvas) {
-        fullscreenCanvas.remove();
-    }
-    
-    // 새 캔버스 생성
-    fullscreenCanvas = createCanvas(canvasWidth, canvasHeight);
-    fullscreenCanvas.parent('fullscreen-canvas-container');
-    
-    // 클릭 이벤트 추가
-    fullscreenCanvas.mousePressed(startCountdown);
-    
-    // 브라우저 전체화면 요청
-    if (container.requestFullscreen) {
-        container.requestFullscreen().catch(console.error);
-    } else if (container.webkitRequestFullscreen) {
-        container.webkitRequestFullscreen();
-    } else if (container.mozRequestFullScreen) {
-        container.mozRequestFullScreen();
-    }
-}
-
-function exitFullscreenMode() {
-    isFullscreenMode = false;
-    
-    // 카운트다운 정리
-    if (countdownTimer) {
-        clearTimeout(countdownTimer);
-        countdownTimer = null;
-    }
-    
-    // 전체화면 모드 숨기기
-    document.getElementById('fullscreen-mode').style.display = 'none';
-    document.getElementById('countdown-overlay').style.display = 'none';
-    
-    // 전체화면 캔버스 제거
-    if (fullscreenCanvas) {
-        fullscreenCanvas.remove();
-        fullscreenCanvas = null;
-    }
-    
-    // 브라우저 전체화면 해제
-    if (document.exitFullscreen) {
-        document.exitFullscreen().catch(console.error);
-    } else if (document.webkitExitFullscreen) {
-        document.webkitExitFullscreen();
-    } else if (document.mozCancelFullScreen) {
-        document.mozCancelFullScreen();
-    }
-    
-    // 원래 캔버스로 돌아가기
-    canvas = createCanvas(CANVAS_WIDTH, CANVAS_HEIGHT);
-    canvas.parent('canvas-container');
-}
-
-function startCountdown() {
-    // 이미 카운트다운 중이면 무시
-    if (countdownTimer) {
-        return;
-    }
-    
-    const countdownOverlay = document.getElementById('countdown-overlay');
-    const countdownNumber = document.getElementById('countdown-number');
-    
-    countdownOverlay.style.display = 'flex';
-    
-    let count = 3;
-    
-    function updateCountdown() {
-        console.log('카운트다운:', count); // 디버그용
-        
-        countdownNumber.textContent = count;
-        
-        // 강제로 애니메이션 제거 후 다시 적용
-        countdownNumber.style.animation = 'none';
-        countdownNumber.offsetHeight; // 리플로우 강제 실행
-        
-        // 카운트에 따라 다른 애니메이션 적용
-        if (count === 1) {
-            countdownNumber.style.animation = 'countdownBounce 1s ease-out';
-            countdownNumber.style.color = '#ff4444'; // 마지막은 빨간색
-        } else {
-            countdownNumber.style.animation = 'countdownPulse 1s ease-in-out';
-            countdownNumber.style.color = 'white';
-        }
-        
-        if (count > 1) {
-            count--;
-            countdownTimer = setTimeout(updateCountdown, 1000);
-        } else {
-            // 카운트다운 완료 - 사진 촬영
-            countdownTimer = setTimeout(() => {
-                countdownOverlay.style.display = 'none';
-                captureFullscreenPhoto();
-                countdownTimer = null;
-            }, 1000);
-        }
-    }
-    
-    updateCountdown();
-}
-
-function captureFullscreenPhoto() {
-    // 원본과 필터 사진 모두 촬영
-    captureBothPhotos();
-    
-    // 촬영 완료 메시지 표시
-    showCaptureSuccess();
-    
-    // 1초 후 전체화면 모드 종료
-    setTimeout(() => {
-        exitFullscreenMode();
-    }, 1000);
-}
-
-function showCaptureSuccess() {
-    const countdownOverlay = document.getElementById('countdown-overlay');
-    const countdownNumber = document.getElementById('countdown-number');
-    const countdownMessage = document.getElementById('countdown-message');
-    
-    countdownOverlay.style.display = 'flex';
-    countdownNumber.textContent = '📸';
-    countdownNumber.style.animation = 'none';
-    countdownNumber.offsetHeight; // 리플로우 강제 실행
-    countdownNumber.style.animation = 'countdownPulse 0.5s ease-out';
-    countdownNumber.style.color = '#44ff44'; // 초록색으로 성공 표시
-    
-    countdownMessage.style.display = 'block';
-    countdownMessage.textContent = '촬영 완료! 📷✨';
-}
 
 window.addEventListener('beforeunload', function() {
     if (currentStream) {
