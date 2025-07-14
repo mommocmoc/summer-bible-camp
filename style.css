@@ -263,10 +263,31 @@ main {
     text-align: center;
 }
 
-.preview-section h3 {
+.gallery-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     margin-bottom: 15px;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.preview-section h3 {
+    margin: 0;
     color: #4a5568;
     font-size: 1.5rem;
+}
+
+@media (max-width: 768px) {
+    .gallery-header {
+        flex-direction: column;
+        align-items: stretch;
+        text-align: center;
+    }
+    
+    .gallery-header h3 {
+        margin-bottom: 10px;
+    }
 }
 
 .photo-gallery {

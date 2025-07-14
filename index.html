@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="style.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.7.0/p5.min.js"></script>
     <script src="https://unpkg.com/ml5@latest/dist/ml5.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 </head>
 <body>
     <div class="container">
@@ -90,7 +91,12 @@
             </div>
 
             <div class="preview-section" id="preview-section">
-                <h3>📸 촬영된 사진들</h3>
+                <div class="gallery-header">
+                    <h3>📸 촬영된 사진들</h3>
+                    <button id="download-all" class="btn btn-primary" onclick="downloadAllPhotos()" style="display: none;">
+                        📦 모든 사진 다운로드 (ZIP)
+                    </button>
+                </div>
                 <div id="photo-gallery" class="photo-gallery">
                     <p class="no-photos">아직 촬영된 사진이 없습니다. 위에서 사진을 찍어보세요!</p>
                 </div>

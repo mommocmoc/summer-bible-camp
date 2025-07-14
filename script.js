@@ -919,14 +919,17 @@ function addPhotoToGallery(imageCanvas, type = 'filtered') {
 
 function updatePhotoGalleryDisplay() {
     const galleryContainer = document.getElementById('photo-gallery');
+    const downloadAllBtn = document.getElementById('download-all');
     
     if (photoGallery.length === 0) {
         galleryContainer.innerHTML = '<p class="no-photos">아직 촬영된 사진이 없습니다. 위에서 사진을 찍어보세요!</p>';
         document.getElementById('preview-section').style.display = 'none';
+        downloadAllBtn.style.display = 'none';
         return;
     }
     
     document.getElementById('preview-section').style.display = 'block';
+    downloadAllBtn.style.display = 'inline-block';
     
     galleryContainer.innerHTML = photoGallery.map(photo => `
         <div class="photo-item" data-photo-id="${photo.id}">
@@ -963,6 +966,71 @@ function removePhotoFromGallery(photoId) {
     if (index !== -1) {
         photoGallery.splice(index, 1);
         updatePhotoGalleryDisplay();
+    }
+}
+
+async function downloadAllPhotos() {
+    if (photoGallery.length === 0) {
+        alert('다운로드할 사진이 없습니다.');
+        return;
+    }
+    
+    // JSZip이 로드되었는지 확인
+    if (typeof JSZip === 'undefined') {
+        alert('압축 라이브러리를 불러오는 중입니다. 잠시 후 다시 시도해주세요.');
+        return;
+    }
+    
+    try {
+        const zip = new JSZip();
+        const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
+        
+        // 각 사진을 ZIP에 추가
+        for (let i = 0; i < photoGallery.length; i++) {
+            const photo = photoGallery[i];
+            
+            // Base64 데이터에서 실제 이미지 데이터만 추출
+            const base64Data = photo.dataUrl.split(',')[1];
+            
+            // 파일명 생성 (순서번호 + 타입 + 타임스탬프)
+            const filename = `${String(i + 1).padStart(3, '0')}_${photo.type === 'filtered' ? '필터포함' : '원본'}_${photo.timestamp.replace(/[/:, ]/g, '-')}.png`;
+            
+            // ZIP에 파일 추가
+            zip.file(filename, base64Data, { base64: true });
+        }
+        
+        // 다운로드 버튼 상태 변경
+        const downloadBtn = document.getElementById('download-all');
+        const originalText = downloadBtn.innerHTML;
+        downloadBtn.innerHTML = '📦 압축 중...';
+        downloadBtn.disabled = true;
+        
+        // ZIP 파일 생성
+        const content = await zip.generateAsync({ type: 'blob' });
+        
+        // 다운로드 링크 생성 및 클릭
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(content);
+        link.download = `chef-photos-${timestamp}.zip`;
+        link.click();
+        
+        // URL 객체 정리
+        URL.revokeObjectURL(link.href);
+        
+        // 버튼 상태 복구
+        downloadBtn.innerHTML = originalText;
+        downloadBtn.disabled = false;
+        
+        console.log(`${photoGallery.length}개의 사진이 ZIP 파일로 다운로드되었습니다.`);
+        
+    } catch (error) {
+        console.error('ZIP 다운로드 중 오류:', error);
+        alert('사진 압축 중 오류가 발생했습니다. 다시 시도해주세요.');
+        
+        // 버튼 상태 복구
+        const downloadBtn = document.getElementById('download-all');
+        downloadBtn.innerHTML = '📦 모든 사진 다운로드 (ZIP)';
+        downloadBtn.disabled = false;
     }
 }
 
