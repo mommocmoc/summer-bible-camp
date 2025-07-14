@@ -1182,12 +1182,22 @@ function startCountdown() {
     let count = 3;
     
     function updateCountdown() {
+        console.log('카운트다운:', count); // 디버그용
+        
         countdownNumber.textContent = count;
+        
+        // 강제로 애니메이션 제거 후 다시 적용
         countdownNumber.style.animation = 'none';
-        // 애니메이션 재시작을 위해 지연
-        setTimeout(() => {
+        countdownNumber.offsetHeight; // 리플로우 강제 실행
+        
+        // 카운트에 따라 다른 애니메이션 적용
+        if (count === 1) {
+            countdownNumber.style.animation = 'countdownBounce 1s ease-out';
+            countdownNumber.style.color = '#ff4444'; // 마지막은 빨간색
+        } else {
             countdownNumber.style.animation = 'countdownPulse 1s ease-in-out';
-        }, 10);
+            countdownNumber.style.color = 'white';
+        }
         
         if (count > 1) {
             count--;
@@ -1209,9 +1219,55 @@ function captureFullscreenPhoto() {
     // 원본과 필터 사진 모두 촬영
     captureBothPhotos();
     
-    // 잠시 후 전체화면 모드 종료
+    // 촬영 완료 메시지 표시
+    showCaptureSuccess();
+    
+    // 3초 후 재시작 안내 메시지 표시
     setTimeout(() => {
-        exitFullscreenMode();
+        showRestartMessage();
+    }, 1500);
+}
+
+function showCaptureSuccess() {
+    const countdownOverlay = document.getElementById('countdown-overlay');
+    const countdownNumber = document.getElementById('countdown-number');
+    const countdownMessage = document.getElementById('countdown-message');
+    
+    countdownOverlay.style.display = 'flex';
+    countdownNumber.textContent = '📸';
+    countdownNumber.style.animation = 'none';
+    countdownNumber.offsetHeight; // 리플로우 강제 실행
+    countdownNumber.style.animation = 'countdownPulse 0.5s ease-out';
+    countdownNumber.style.color = '#44ff44'; // 초록색으로 성공 표시
+    
+    countdownMessage.style.display = 'block';
+    countdownMessage.textContent = '촬영 완료! 📷✨';
+}
+
+function showRestartMessage() {
+    const countdownNumber = document.getElementById('countdown-number');
+    const countdownMessage = document.getElementById('countdown-message');
+    
+    countdownNumber.textContent = '3';
+    countdownNumber.style.color = 'white';
+    countdownMessage.textContent = '1초 후 다시 시작됩니다...';
+    
+    let restartCount = 1;
+    const restartTimer = setInterval(() => {
+        countdownNumber.textContent = restartCount;
+        countdownNumber.style.animation = 'none';
+        countdownNumber.offsetHeight;
+        countdownNumber.style.animation = 'countdownPulse 1s ease-in-out';
+        
+        if (restartCount <= 0) {
+            clearInterval(restartTimer);
+            // 카운트다운 오버레이 숨기기
+            document.getElementById('countdown-overlay').style.display = 'none';
+            countdownMessage.style.display = 'none';
+            // 다시 클릭 대기 상태로
+        } else {
+            restartCount--;
+        }
     }, 1000);
 }
 
