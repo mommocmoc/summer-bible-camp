@@ -431,15 +431,27 @@ function drawChefHat(nose) {
     // 실제 오프셋 계산 (UI의 0 = 실제 -100px)
     const actualHatOffset = hatOffset - 100;
     
+    // 전체화면 모드에서의 스케일링 계산
+    let scaleFactor = 1;
+    let scaledOffset = actualHatOffset;
+    
+    if (isFullscreenMode) {
+        // 전체화면에서는 캔버스 크기에 맞게 스케일링
+        scaleFactor = Math.min(width / CANVAS_WIDTH, height / CANVAS_HEIGHT);
+        scaledOffset = actualHatOffset * scaleFactor;
+    }
+    
     // 투명도 계산 (100% = 255, 10% = 25.5)
     const hatAlpha = (hatOpacity / 100) * 255;
     
     // 이미지가 로드되고 유효한 경우
     if (chefHatImg && chefHatImg.width > 0) {
-        const hatWidth = 120 * (hatSize / 100);
-        const hatHeight = 100 * (hatSize / 100);
+        const baseHatWidth = 120 * (hatSize / 100);
+        const baseHatHeight = 100 * (hatSize / 100);
+        const hatWidth = baseHatWidth * scaleFactor;
+        const hatHeight = baseHatHeight * scaleFactor;
         const hatX = mirroredX - hatWidth / 2;
-        const hatY = nose.y - hatHeight + actualHatOffset;
+        const hatY = nose.y - hatHeight + scaledOffset;
         
         push();
         tint(255, hatAlpha);
@@ -449,27 +461,39 @@ function drawChefHat(nose) {
         // Fallback: 기본 도형으로 그리기
         fill(255, 255, 255, hatAlpha * 0.8);
         stroke(200, hatAlpha);
-        strokeWeight(2);
+        strokeWeight(2 * scaleFactor);
         
-        const hatWidth = 100 * (hatSize / 100);
-        const hatHeight = 80 * (hatSize / 100);
+        const baseHatWidth = 100 * (hatSize / 100);
+        const baseHatHeight = 80 * (hatSize / 100);
+        const hatWidth = baseHatWidth * scaleFactor;
+        const hatHeight = baseHatHeight * scaleFactor;
         const hatX = mirroredX - hatWidth / 2;
-        const hatY = nose.y - hatHeight + actualHatOffset;
+        const hatY = nose.y - hatHeight + scaledOffset;
         
         // 요리사 모자 모양
-        ellipse(mirroredX, hatY + 20, hatWidth, 40);
-        rect(hatX + 20, hatY, hatWidth - 40, 50);
+        ellipse(mirroredX, hatY + 20 * scaleFactor, hatWidth, 40 * scaleFactor);
+        rect(hatX + 20 * scaleFactor, hatY, hatWidth - 40 * scaleFactor, 50 * scaleFactor);
         
         fill(0, hatAlpha);
         textAlign(CENTER, CENTER);
-        textSize(16);
-        text('👨‍🍳', mirroredX, hatY + 25);
+        textSize(16 * scaleFactor);
+        text('👨‍🍳', mirroredX, hatY + 25 * scaleFactor);
     }
 }
 
 function drawApron(leftShoulder, rightShoulder) {
     const mirroredLeftX = width - leftShoulder.x;
     const mirroredRightX = width - rightShoulder.x;
+    
+    // 전체화면 모드에서의 스케일링 계산
+    let scaleFactor = 1;
+    let scaledOffset = apronOffset;
+    
+    if (isFullscreenMode) {
+        // 전체화면에서는 캔버스 크기에 맞게 스케일링
+        scaleFactor = Math.min(width / CANVAS_WIDTH, height / CANVAS_HEIGHT);
+        scaledOffset = apronOffset * scaleFactor;
+    }
     
     // 투명도 계산 (100% = 255, 10% = 25.5)
     const apronAlpha = (apronOpacity / 100) * 255;
@@ -482,7 +506,7 @@ function drawApron(leftShoulder, rightShoulder) {
         const apronWidth = Math.abs(mirroredLeftX - mirroredRightX) * (apronSize / 100) * 1.5;
         const apronHeight = apronWidth * 1.2;
         const apronX = shoulderMidX - apronWidth / 2;
-        const apronY = shoulderMidY + apronOffset;
+        const apronY = shoulderMidY + scaledOffset;
         
         push();
         tint(255, apronAlpha);
@@ -495,24 +519,24 @@ function drawApron(leftShoulder, rightShoulder) {
         
         fill(255, 255, 255, apronAlpha * 0.7);
         stroke(200, apronAlpha);
-        strokeWeight(2);
+        strokeWeight(2 * scaleFactor);
         
         const apronWidth = Math.abs(mirroredLeftX - mirroredRightX) * (apronSize / 100);
         const apronHeight = apronWidth * 1.3;
         const apronX = shoulderMidX - apronWidth / 2;
-        const apronY = shoulderMidY + apronOffset;
+        const apronY = shoulderMidY + scaledOffset;
         
         // 앞치마 모양
-        rect(apronX, apronY, apronWidth, apronHeight, 10);
+        rect(apronX, apronY, apronWidth, apronHeight, 10 * scaleFactor);
         
         // 끈
-        const neckStrapY = shoulderMidY - 20;
-        line(mirroredLeftX, leftShoulder.y, apronX + 20, neckStrapY);
-        line(mirroredRightX, rightShoulder.y, apronX + apronWidth - 20, neckStrapY);
+        const neckStrapY = shoulderMidY - 20 * scaleFactor;
+        line(mirroredLeftX, leftShoulder.y, apronX + 20 * scaleFactor, neckStrapY);
+        line(mirroredRightX, rightShoulder.y, apronX + apronWidth - 20 * scaleFactor, neckStrapY);
         
         fill(0, apronAlpha);
         textAlign(CENTER, CENTER);
-        textSize(16);
+        textSize(16 * scaleFactor);
         text('🍳', shoulderMidX, apronY + apronHeight / 3);
     }
 }
@@ -1222,10 +1246,10 @@ function captureFullscreenPhoto() {
     // 촬영 완료 메시지 표시
     showCaptureSuccess();
     
-    // 3초 후 재시작 안내 메시지 표시
+    // 1초 후 전체화면 모드 종료
     setTimeout(() => {
-        showRestartMessage();
-    }, 1500);
+        exitFullscreenMode();
+    }, 1000);
 }
 
 function showCaptureSuccess() {
@@ -1242,33 +1266,6 @@ function showCaptureSuccess() {
     
     countdownMessage.style.display = 'block';
     countdownMessage.textContent = '촬영 완료! 📷✨';
-}
-
-function showRestartMessage() {
-    const countdownNumber = document.getElementById('countdown-number');
-    const countdownMessage = document.getElementById('countdown-message');
-    
-    countdownNumber.textContent = '3';
-    countdownNumber.style.color = 'white';
-    countdownMessage.textContent = '1초 후 다시 시작됩니다...';
-    
-    let restartCount = 1;
-    const restartTimer = setInterval(() => {
-        countdownNumber.textContent = restartCount;
-        countdownNumber.style.animation = 'none';
-        countdownNumber.offsetHeight;
-        countdownNumber.style.animation = 'countdownPulse 1s ease-in-out';
-        
-        if (restartCount <= 0) {
-            clearInterval(restartTimer);
-            // 카운트다운 오버레이 숨기기
-            document.getElementById('countdown-overlay').style.display = 'none';
-            countdownMessage.style.display = 'none';
-            // 다시 클릭 대기 상태로
-        } else {
-            restartCount--;
-        }
-    }, 1000);
 }
 
 window.addEventListener('beforeunload', function() {
