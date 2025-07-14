@@ -26,28 +26,38 @@ let apronSize = 120;
 let capturedWithFilters = null;
 let capturedOriginal = null;
 
+// 사진 갤러리 배열
+let photoGallery = [];
+
 const CANVAS_WIDTH = 640;
 const CANVAS_HEIGHT = 480;
 
 function preload() {
     // GitHub Pages 호환성을 위한 에셋 로딩
     try {
+        console.log('Starting to load image assets...');
         chefHatImg = loadImage('./assets/chef-hat.png', 
-            () => console.log('Chef hat image loaded successfully'),
             () => {
-                console.warn('Chef hat image failed to load, using fallback');
+                console.log('✅ Chef hat image loaded successfully');
+                console.log('Chef hat dimensions:', chefHatImg.width, 'x', chefHatImg.height);
+            },
+            () => {
+                console.warn('❌ Chef hat image failed to load, using fallback');
                 chefHatImg = null;
             }
         );
         apronImg = loadImage('./assets/apron.png',
-            () => console.log('Apron image loaded successfully'),
             () => {
-                console.warn('Apron image failed to load, using fallback');
+                console.log('✅ Apron image loaded successfully');
+                console.log('Apron dimensions:', apronImg.width, 'x', apronImg.height);
+            },
+            () => {
+                console.warn('❌ Apron image failed to load, using fallback');
                 apronImg = null;
             }
         );
     } catch (error) {
-        console.error('Error loading images:', error);
+        console.error('❌ Error loading images:', error);
         chefHatImg = null;
         apronImg = null;
     }
@@ -499,6 +509,9 @@ function capturePhoto() {
     
     console.log('Video dimensions:', videoWidth, 'x', videoHeight);
     console.log('Canvas dimensions:', CANVAS_WIDTH, 'x', CANVAS_HEIGHT);
+    console.log('Chef hat image loaded:', chefHatImg && chefHatImg.width > 0);
+    console.log('Apron image loaded:', apronImg && apronImg.width > 0);
+    console.log('Poses detected:', poses.length);
     
     // 캡처 캔버스를 비디오 실제 크기로 생성
     const tempCanvas = createGraphics(videoWidth, videoHeight);
@@ -548,67 +561,89 @@ function capturePhoto() {
         }
     }
     
-    // 결과를 표시용 캔버스에 그리기
-    const capturedPhotoCanvas = document.getElementById('captured-photo');
-    capturedPhotoCanvas.width = videoWidth;
-    capturedPhotoCanvas.height = videoHeight;
-    const ctx = capturedPhotoCanvas.getContext('2d');
-    
-    ctx.drawImage(tempCanvas.canvas, 0, 0);
-    
     // 전역 변수에 저장 (다운로드용)
     capturedWithFilters = tempCanvas;
     
-    document.getElementById('preview-section').style.display = 'block';
-    document.getElementById('download-photo').style.display = 'inline-block';
+    // 갤러리에 추가
+    addPhotoToGallery(tempCanvas, 'filtered');
     
-    document.getElementById('preview-section').scrollIntoView({ 
-        behavior: 'smooth' 
-    });
+    // 다운로드 버튼 활성화
+    document.getElementById('download-photo').disabled = false;
 }
 
 function drawChefHatOnCanvas(canvas, nose, scaleX = 1, scaleY = 1) {
-    canvas.fill(255, 255, 255, 200);
-    canvas.stroke(200);
-    canvas.strokeWeight(2 * Math.max(scaleX, scaleY));
-    
-    const hatWidth = 100 * (hatSize / 100) * scaleX;
-    const hatHeight = 80 * (hatSize / 100) * scaleY;
-    const hatX = nose.x - hatWidth / 2;
-    const hatY = nose.y - hatHeight + (hatOffset * scaleY);
-    
-    canvas.ellipse(nose.x, hatY + 20 * scaleY, hatWidth, 40 * scaleY);
-    canvas.rect(hatX + 20 * scaleX, hatY, hatWidth - 40 * scaleX, 50 * scaleY);
-    
-    canvas.fill(0);
-    canvas.textAlign(CENTER, CENTER);
-    canvas.textSize(12 * Math.max(scaleX, scaleY));
-    canvas.text('👨‍🍳', nose.x, hatY + 25 * scaleY);
+    // 이미지가 로드되고 유효한 경우
+    if (chefHatImg && chefHatImg.width > 0) {
+        const hatWidth = 120 * (hatSize / 100) * scaleX;
+        const hatHeight = 100 * (hatSize / 100) * scaleY;
+        const hatX = nose.x - hatWidth / 2;
+        const hatY = nose.y - hatHeight + (hatOffset * scaleY);
+        
+        canvas.push();
+        canvas.tint(255, 220);
+        canvas.image(chefHatImg, hatX, hatY, hatWidth, hatHeight);
+        canvas.pop();
+    } else {
+        // Fallback: 기본 도형으로 그리기
+        canvas.fill(255, 255, 255, 200);
+        canvas.stroke(200);
+        canvas.strokeWeight(2 * Math.max(scaleX, scaleY));
+        
+        const hatWidth = 100 * (hatSize / 100) * scaleX;
+        const hatHeight = 80 * (hatSize / 100) * scaleY;
+        const hatX = nose.x - hatWidth / 2;
+        const hatY = nose.y - hatHeight + (hatOffset * scaleY);
+        
+        // 요리사 모자 모양
+        canvas.ellipse(nose.x, hatY + 20 * scaleY, hatWidth, 40 * scaleY);
+        canvas.rect(hatX + 20 * scaleX, hatY, hatWidth - 40 * scaleX, 50 * scaleY);
+        
+        canvas.fill(0);
+        canvas.textAlign(CENTER, CENTER);
+        canvas.textSize(16 * Math.max(scaleX, scaleY));
+        canvas.text('👨‍🍳', nose.x, hatY + 25 * scaleY);
+    }
 }
 
 function drawApronOnCanvas(canvas, leftShoulder, rightShoulder, scaleX = 1, scaleY = 1) {
     const shoulderMidX = (leftShoulder.x + rightShoulder.x) / 2;
     const shoulderMidY = (leftShoulder.y + rightShoulder.y) / 2;
     
-    canvas.fill(255, 255, 255, 180);
-    canvas.stroke(200);
-    canvas.strokeWeight(2 * Math.max(scaleX, scaleY));
-    
-    const apronWidth = Math.abs(leftShoulder.x - rightShoulder.x) * (apronSize / 100);
-    const apronHeight = apronWidth * 1.3;
-    const apronX = shoulderMidX - apronWidth / 2;
-    const apronY = shoulderMidY + (apronOffset * scaleY);
-    
-    canvas.rect(apronX, apronY, apronWidth, apronHeight, 10 * Math.max(scaleX, scaleY));
-    
-    const neckStrapY = shoulderMidY - 20 * scaleY;
-    canvas.line(leftShoulder.x, leftShoulder.y, apronX + 20 * scaleX, neckStrapY);
-    canvas.line(rightShoulder.x, rightShoulder.y, apronX + apronWidth - 20 * scaleX, neckStrapY);
-    
-    canvas.fill(0);
-    canvas.textAlign(CENTER, CENTER);
-    canvas.textSize(16 * Math.max(scaleX, scaleY));
-    canvas.text('🍳', shoulderMidX, apronY + apronHeight / 3);
+    // 이미지가 로드되고 유효한 경우
+    if (apronImg && apronImg.width > 0) {
+        const apronWidth = Math.abs(leftShoulder.x - rightShoulder.x) * (apronSize / 100) * 1.5;
+        const apronHeight = apronWidth * 1.2;
+        const apronX = shoulderMidX - apronWidth / 2;
+        const apronY = shoulderMidY + (apronOffset * scaleY);
+        
+        canvas.push();
+        canvas.tint(255, 220);
+        canvas.image(apronImg, apronX, apronY, apronWidth, apronHeight);
+        canvas.pop();
+    } else {
+        // Fallback: 기본 도형으로 그리기
+        canvas.fill(255, 255, 255, 180);
+        canvas.stroke(200);
+        canvas.strokeWeight(2 * Math.max(scaleX, scaleY));
+        
+        const apronWidth = Math.abs(leftShoulder.x - rightShoulder.x) * (apronSize / 100);
+        const apronHeight = apronWidth * 1.3;
+        const apronX = shoulderMidX - apronWidth / 2;
+        const apronY = shoulderMidY + (apronOffset * scaleY);
+        
+        // 앞치마 모양
+        canvas.rect(apronX, apronY, apronWidth, apronHeight, 10 * Math.max(scaleX, scaleY));
+        
+        // 끈
+        const neckStrapY = shoulderMidY - 20 * scaleY;
+        canvas.line(leftShoulder.x, leftShoulder.y, apronX + 20 * scaleX, neckStrapY);
+        canvas.line(rightShoulder.x, rightShoulder.y, apronX + apronWidth - 20 * scaleX, neckStrapY);
+        
+        canvas.fill(0);
+        canvas.textAlign(CENTER, CENTER);
+        canvas.textSize(16 * Math.max(scaleX, scaleY));
+        canvas.text('🍳', shoulderMidX, apronY + apronHeight / 3);
+    }
 }
 
 function drawBackgroundOnCanvas(canvas, canvasWidth = CANVAS_WIDTH, canvasHeight = CANVAS_HEIGHT) {
@@ -642,19 +677,16 @@ function drawBackgroundOnCanvas(canvas, canvasWidth = CANVAS_WIDTH, canvasHeight
 }
 
 function downloadPhoto() {
-    if (capturedWithFilters) {
+    // 가장 최근의 필터가 적용된 사진 다운로드
+    const filteredPhotos = photoGallery.filter(p => p.type === 'filtered');
+    if (filteredPhotos.length > 0) {
+        const latestPhoto = filteredPhotos[filteredPhotos.length - 1];
+        downloadPhotoFromGallery(latestPhoto.id);
+    } else if (capturedWithFilters) {
         const link = document.createElement('a');
         link.download = `chef-photo-${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.png`;
         link.href = capturedWithFilters.canvas.toDataURL();
         link.click();
-    } else {
-        const canvas = document.getElementById('captured-photo');
-        if (canvas) {
-            const link = document.createElement('a');
-            link.download = `chef-photo-${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.png`;
-            link.href = canvas.toDataURL();
-            link.click();
-        }
     }
 }
 
@@ -712,20 +744,11 @@ function captureOriginalPhoto() {
     
     capturedOriginal = originalCanvas;
     
-    // 원본 사진 표시
-    const capturedPhotoCanvas = document.getElementById('captured-photo');
-    capturedPhotoCanvas.width = videoWidth;
-    capturedPhotoCanvas.height = videoHeight;
-    const ctx = capturedPhotoCanvas.getContext('2d');
-    ctx.drawImage(originalCanvas.canvas, 0, 0);
+    // 갤러리에 추가
+    addPhotoToGallery(originalCanvas, 'original');
     
-    document.getElementById('preview-section').style.display = 'block';
-    document.getElementById('download-original').style.display = 'inline-block';
-    document.getElementById('download-photo').style.display = 'none';
-    
-    document.getElementById('preview-section').scrollIntoView({ 
-        behavior: 'smooth' 
-    });
+    // 다운로드 버튼 활성화
+    document.getElementById('download-original').disabled = false;
 }
 
 function captureBothPhotos() {
@@ -734,12 +757,58 @@ function captureBothPhotos() {
         return;
     }
     
-    // 필터 포함된 버전 캡처
-    capturePhoto();
-    
     // 실제 비디오 크기 가져오기
     const videoWidth = video.elt.videoWidth || video.width;
     const videoHeight = video.elt.videoHeight || video.height;
+    
+    // 필터 포함된 버전 캡처
+    const tempCanvas = createGraphics(videoWidth, videoHeight);
+    tempCanvas.clear();
+    
+    if (showBackground) {
+        drawBackgroundOnCanvas(tempCanvas, videoWidth, videoHeight);
+    }
+    
+    // 비디오를 실제 크기로 그리기 (미러링)
+    tempCanvas.push();
+    tempCanvas.scale(-1, 1);
+    tempCanvas.image(video, -videoWidth, 0, videoWidth, videoHeight);
+    tempCanvas.pop();
+    
+    // 오버레이 추가 (좌표 스케일링)
+    if (poses.length > 0) {
+        const pose = poses[0];
+        const scaleX = videoWidth / CANVAS_WIDTH;
+        const scaleY = videoHeight / CANVAS_HEIGHT;
+        
+        const nose = pose.keypoints.find(kp => kp.name === 'nose');
+        const leftShoulder = pose.keypoints.find(kp => kp.name === 'left_shoulder');
+        const rightShoulder = pose.keypoints.find(kp => kp.name === 'right_shoulder');
+        
+        if (showHat && nose && nose.confidence > 0.3) {
+            const scaledNose = { 
+                x: videoWidth - (nose.x * scaleX), 
+                y: nose.y * scaleY 
+            };
+            drawChefHatOnCanvas(tempCanvas, scaledNose, scaleX, scaleY);
+        }
+        
+        if (showApron && leftShoulder && rightShoulder && 
+            leftShoulder.confidence > 0.3 && rightShoulder.confidence > 0.3) {
+            const scaledLeftShoulder = { 
+                x: videoWidth - (leftShoulder.x * scaleX), 
+                y: leftShoulder.y * scaleY 
+            };
+            const scaledRightShoulder = { 
+                x: videoWidth - (rightShoulder.x * scaleX), 
+                y: rightShoulder.y * scaleY 
+            };
+            drawApronOnCanvas(tempCanvas, scaledLeftShoulder, scaledRightShoulder, scaleX, scaleY);
+        }
+    }
+    
+    capturedWithFilters = tempCanvas;
+    addPhotoToGallery(tempCanvas, 'filtered');
     
     // 원본 버전도 캡처
     const originalCanvas = createGraphics(videoWidth, videoHeight);
@@ -749,18 +818,94 @@ function captureBothPhotos() {
     originalCanvas.pop();
     
     capturedOriginal = originalCanvas;
+    addPhotoToGallery(originalCanvas, 'original');
     
-    // 둘 다 다운로드 버튼 표시
-    document.getElementById('download-photo').style.display = 'inline-block';
-    document.getElementById('download-original').style.display = 'inline-block';
+    // 둘 다 다운로드 버튼 활성화
+    document.getElementById('download-photo').disabled = false;
+    document.getElementById('download-original').disabled = false;
 }
 
 function downloadOriginalPhoto() {
-    if (capturedOriginal) {
+    // 가장 최근의 원본 사진 다운로드
+    const originalPhotos = photoGallery.filter(p => p.type === 'original');
+    if (originalPhotos.length > 0) {
+        const latestPhoto = originalPhotos[originalPhotos.length - 1];
+        downloadPhotoFromGallery(latestPhoto.id);
+    } else if (capturedOriginal) {
         const link = document.createElement('a');
         link.download = `original-photo-${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.png`;
         link.href = capturedOriginal.canvas.toDataURL();
         link.click();
+    }
+}
+
+function addPhotoToGallery(imageCanvas, type = 'filtered') {
+    const timestamp = new Date().toLocaleString('ko-KR');
+    const photoId = Date.now() + '_' + type;
+    
+    const photoData = {
+        id: photoId,
+        type: type,
+        timestamp: timestamp,
+        canvas: imageCanvas,
+        dataUrl: imageCanvas.canvas.toDataURL()
+    };
+    
+    photoGallery.push(photoData);
+    updatePhotoGalleryDisplay();
+    
+    // 갤러리로 스크롤
+    document.getElementById('preview-section').scrollIntoView({ 
+        behavior: 'smooth' 
+    });
+}
+
+function updatePhotoGalleryDisplay() {
+    const galleryContainer = document.getElementById('photo-gallery');
+    
+    if (photoGallery.length === 0) {
+        galleryContainer.innerHTML = '<p class="no-photos">아직 촬영된 사진이 없습니다. 위에서 사진을 찍어보세요!</p>';
+        document.getElementById('preview-section').style.display = 'none';
+        return;
+    }
+    
+    document.getElementById('preview-section').style.display = 'block';
+    
+    galleryContainer.innerHTML = photoGallery.map(photo => `
+        <div class="photo-item" data-photo-id="${photo.id}">
+            <img src="${photo.dataUrl}" alt="촬영된 사진">
+            <div class="photo-info">
+                <h4>${photo.type === 'filtered' ? '🎭 필터 포함' : '📷 원본'}</h4>
+                <p>${photo.timestamp}</p>
+            </div>
+            <div class="photo-actions">
+                <button class="btn btn-success" onclick="downloadPhotoFromGallery('${photo.id}')">
+                    💾 다운로드
+                </button>
+                <button class="btn btn-secondary" onclick="removePhotoFromGallery('${photo.id}')">
+                    🗑️ 삭제
+                </button>
+            </div>
+        </div>
+    `).join('');
+}
+
+function downloadPhotoFromGallery(photoId) {
+    const photo = photoGallery.find(p => p.id === photoId);
+    if (photo) {
+        const link = document.createElement('a');
+        const filename = `${photo.type === 'filtered' ? 'chef-photo' : 'original-photo'}-${photo.timestamp.replace(/[/:, ]/g, '-')}.png`;
+        link.download = filename;
+        link.href = photo.dataUrl;
+        link.click();
+    }
+}
+
+function removePhotoFromGallery(photoId) {
+    const index = photoGallery.findIndex(p => p.id === photoId);
+    if (index !== -1) {
+        photoGallery.splice(index, 1);
+        updatePhotoGalleryDisplay();
     }
 }
 
