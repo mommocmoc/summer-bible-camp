@@ -6,9 +6,9 @@
 
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #87CEEB 0%, #98E4D6 50%, #B0E0E6 100%);
     min-height: 100vh;
-    color: #333;
+    color: #2C3E50;
 }
 
 .container {
@@ -24,17 +24,19 @@ header {
     padding: 20px;
     border-radius: 15px;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    border: 3px solid #FF6B9D;
 }
 
 header h1 {
     font-size: 2.5rem;
     margin-bottom: 10px;
-    color: #4a5568;
+    color: #FF6B9D;
+    font-weight: bold;
 }
 
 header p {
     font-size: 1.1rem;
-    color: #718096;
+    color: #2C3E50;
 }
 
 main {
@@ -53,6 +55,7 @@ main {
     justify-content: center;
     align-items: center;
     min-height: 500px;
+    border: 3px solid #FFD93D;
 }
 
 #canvas-container {
@@ -77,6 +80,7 @@ main {
     padding: 20px;
     border-radius: 15px;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    border: 2px solid #87CEEB;
 }
 
 .camera-controls {
@@ -94,8 +98,9 @@ main {
 
 .capture-controls h4 {
     margin: 0 0 10px 0;
-    color: #4a5568;
+    color: #FFD93D;
     text-align: center;
+    font-weight: bold;
 }
 
 .download-controls {
@@ -107,12 +112,14 @@ main {
     flex-direction: column;
     gap: 10px;
     align-items: center;
+    border: 2px solid #FF6B9D;
 }
 
 .download-controls h4 {
     margin: 0 0 10px 0;
-    color: #4a5568;
+    color: #FF6B9D;
     text-align: center;
+    font-weight: bold;
 }
 
 .overlay-controls {
@@ -140,12 +147,14 @@ main {
     padding: 20px;
     border-radius: 15px;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    border: 2px solid #98E4D6;
 }
 
 .adjustment-controls h4 {
     margin: 0 0 15px 0;
-    color: #4a5568;
+    color: #2C3E50;
     text-align: center;
+    font-weight: bold;
 }
 
 .slider-group {
@@ -156,7 +165,7 @@ main {
     display: block;
     margin-bottom: 5px;
     font-size: 0.9rem;
-    color: #4a5568;
+    color: #2C3E50;
     font-weight: 600;
 }
 
@@ -180,19 +189,19 @@ main {
     width: 20px;
     height: 20px;
     border-radius: 50%;
-    background: #667eea;
+    background: #FF6B9D;
     cursor: pointer;
-    box-shadow: 0 2px 6px rgba(102, 126, 234, 0.3);
+    box-shadow: 0 2px 6px rgba(255, 107, 157, 0.3);
 }
 
 .slider::-moz-range-thumb {
     width: 20px;
     height: 20px;
     border-radius: 50%;
-    background: #667eea;
+    background: #FF6B9D;
     cursor: pointer;
     border: none;
-    box-shadow: 0 2px 6px rgba(102, 126, 234, 0.3);
+    box-shadow: 0 2px 6px rgba(255, 107, 157, 0.3);
 }
 
 .btn {
@@ -209,23 +218,25 @@ main {
 }
 
 .btn-primary {
-    background: linear-gradient(45deg, #667eea, #764ba2);
-    color: white;
+    background: linear-gradient(45deg, #FFD93D, #FFA726);
+    color: #2C3E50;
+    font-weight: bold;
 }
 
 .btn-primary:hover {
-    background: linear-gradient(45deg, #5a6fd8, #6a4190);
+    background: linear-gradient(45deg, #FFC107, #FF9800);
     transform: translateY(-2px);
-    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+    box-shadow: 0 4px 15px rgba(255, 217, 61, 0.4);
 }
 
 .btn-secondary {
-    background: #e2e8f0;
-    color: #4a5568;
+    background: #B0E0E6;
+    color: #2C3E50;
+    font-weight: bold;
 }
 
 .btn-secondary:hover {
-    background: #cbd5e0;
+    background: #87CEEB;
     transform: translateY(-1px);
 }
 
