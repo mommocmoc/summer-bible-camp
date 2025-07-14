@@ -17,7 +17,7 @@ let showBackground = true;
 let debugMode = false;
 
 // 조정 가능한 변수들
-let hatOffset = -20;
+let hatOffset = 0; // UI 표시용 (실제로는 -100px 오프셋이 적용됨)
 let hatSize = 100;
 let apronOffset = 0;
 let apronSize = 120;
@@ -417,12 +417,15 @@ function drawOverlays() {
 function drawChefHat(nose) {
     const mirroredX = width - nose.x;
     
+    // 실제 오프셋 계산 (UI의 0 = 실제 -100px)
+    const actualHatOffset = hatOffset - 100;
+    
     // 이미지가 로드되고 유효한 경우
     if (chefHatImg && chefHatImg.width > 0) {
         const hatWidth = 120 * (hatSize / 100);
         const hatHeight = 100 * (hatSize / 100);
         const hatX = mirroredX - hatWidth / 2;
-        const hatY = nose.y - hatHeight + hatOffset;
+        const hatY = nose.y - hatHeight + actualHatOffset;
         
         push();
         tint(255, 220);
@@ -437,7 +440,7 @@ function drawChefHat(nose) {
         const hatWidth = 100 * (hatSize / 100);
         const hatHeight = 80 * (hatSize / 100);
         const hatX = mirroredX - hatWidth / 2;
-        const hatY = nose.y - hatHeight + hatOffset;
+        const hatY = nose.y - hatHeight + actualHatOffset;
         
         // 요리사 모자 모양
         ellipse(mirroredX, hatY + 20, hatWidth, 40);
@@ -569,12 +572,15 @@ function capturePhoto() {
 }
 
 function drawChefHatOnCanvas(canvas, nose, scaleX = 1, scaleY = 1) {
+    // 실제 오프셋 계산 (UI의 0 = 실제 -100px)
+    const actualHatOffset = hatOffset - 100;
+    
     // 이미지가 로드되고 유효한 경우
     if (chefHatImg && chefHatImg.width > 0) {
         const hatWidth = 120 * (hatSize / 100) * scaleX;
         const hatHeight = 100 * (hatSize / 100) * scaleY;
         const hatX = nose.x - hatWidth / 2;
-        const hatY = nose.y - hatHeight + (hatOffset * scaleY);
+        const hatY = nose.y - hatHeight + (actualHatOffset * scaleY);
         
         canvas.push();
         canvas.tint(255, 220);
@@ -589,7 +595,7 @@ function drawChefHatOnCanvas(canvas, nose, scaleX = 1, scaleY = 1) {
         const hatWidth = 100 * (hatSize / 100) * scaleX;
         const hatHeight = 80 * (hatSize / 100) * scaleY;
         const hatX = nose.x - hatWidth / 2;
-        const hatY = nose.y - hatHeight + (hatOffset * scaleY);
+        const hatY = nose.y - hatHeight + (actualHatOffset * scaleY);
         
         // 요리사 모자 모양
         canvas.ellipse(nose.x, hatY + 20 * scaleY, hatWidth, 40 * scaleY);
