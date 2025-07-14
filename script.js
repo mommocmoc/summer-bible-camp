@@ -566,9 +566,6 @@ function capturePhoto() {
     
     // 갤러리에 추가
     addPhotoToGallery(tempCanvas, 'filtered');
-    
-    // 다운로드 버튼 활성화
-    document.getElementById('download-photo').disabled = false;
 }
 
 function drawChefHatOnCanvas(canvas, nose, scaleX = 1, scaleY = 1) {
@@ -677,17 +674,67 @@ function drawBackgroundOnCanvas(canvas, canvasWidth = CANVAS_WIDTH, canvasHeight
 }
 
 function downloadPhoto() {
-    // 가장 최근의 필터가 적용된 사진 다운로드
-    const filteredPhotos = photoGallery.filter(p => p.type === 'filtered');
-    if (filteredPhotos.length > 0) {
-        const latestPhoto = filteredPhotos[filteredPhotos.length - 1];
-        downloadPhotoFromGallery(latestPhoto.id);
-    } else if (capturedWithFilters) {
-        const link = document.createElement('a');
-        link.download = `chef-photo-${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.png`;
-        link.href = capturedWithFilters.canvas.toDataURL();
-        link.click();
+    // 현재 프리뷰 화면(필터 포함)을 바로 캡처해서 저장
+    if (!video || !isVideoReady) {
+        alert('카메라가 준비되지 않았습니다.');
+        return;
     }
+    
+    // 실제 비디오 크기 가져오기
+    const videoWidth = video.elt.videoWidth || video.width;
+    const videoHeight = video.elt.videoHeight || video.height;
+    
+    // 현재 화면을 캡처
+    const tempCanvas = createGraphics(videoWidth, videoHeight);
+    tempCanvas.clear();
+    
+    if (showBackground) {
+        drawBackgroundOnCanvas(tempCanvas, videoWidth, videoHeight);
+    }
+    
+    // 비디오를 실제 크기로 그리기 (미러링)
+    tempCanvas.push();
+    tempCanvas.scale(-1, 1);
+    tempCanvas.image(video, -videoWidth, 0, videoWidth, videoHeight);
+    tempCanvas.pop();
+    
+    // 오버레이 추가 (좌표 스케일링)
+    if (poses.length > 0) {
+        const pose = poses[0];
+        const scaleX = videoWidth / CANVAS_WIDTH;
+        const scaleY = videoHeight / CANVAS_HEIGHT;
+        
+        const nose = pose.keypoints.find(kp => kp.name === 'nose');
+        const leftShoulder = pose.keypoints.find(kp => kp.name === 'left_shoulder');
+        const rightShoulder = pose.keypoints.find(kp => kp.name === 'right_shoulder');
+        
+        if (showHat && nose && nose.confidence > 0.3) {
+            const scaledNose = { 
+                x: videoWidth - (nose.x * scaleX), 
+                y: nose.y * scaleY 
+            };
+            drawChefHatOnCanvas(tempCanvas, scaledNose, scaleX, scaleY);
+        }
+        
+        if (showApron && leftShoulder && rightShoulder && 
+            leftShoulder.confidence > 0.3 && rightShoulder.confidence > 0.3) {
+            const scaledLeftShoulder = { 
+                x: videoWidth - (leftShoulder.x * scaleX), 
+                y: leftShoulder.y * scaleY 
+            };
+            const scaledRightShoulder = { 
+                x: videoWidth - (rightShoulder.x * scaleX), 
+                y: rightShoulder.y * scaleY 
+            };
+            drawApronOnCanvas(tempCanvas, scaledLeftShoulder, scaledRightShoulder, scaleX, scaleY);
+        }
+    }
+    
+    // 바로 다운로드
+    const link = document.createElement('a');
+    link.download = `chef-photo-${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.png`;
+    link.href = tempCanvas.canvas.toDataURL();
+    link.click();
 }
 
 function setupAdjustmentControls() {
@@ -746,9 +793,6 @@ function captureOriginalPhoto() {
     
     // 갤러리에 추가
     addPhotoToGallery(originalCanvas, 'original');
-    
-    // 다운로드 버튼 활성화
-    document.getElementById('download-original').disabled = false;
 }
 
 function captureBothPhotos() {
@@ -819,24 +863,31 @@ function captureBothPhotos() {
     
     capturedOriginal = originalCanvas;
     addPhotoToGallery(originalCanvas, 'original');
-    
-    // 둘 다 다운로드 버튼 활성화
-    document.getElementById('download-photo').disabled = false;
-    document.getElementById('download-original').disabled = false;
 }
 
 function downloadOriginalPhoto() {
-    // 가장 최근의 원본 사진 다운로드
-    const originalPhotos = photoGallery.filter(p => p.type === 'original');
-    if (originalPhotos.length > 0) {
-        const latestPhoto = originalPhotos[originalPhotos.length - 1];
-        downloadPhotoFromGallery(latestPhoto.id);
-    } else if (capturedOriginal) {
-        const link = document.createElement('a');
-        link.download = `original-photo-${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.png`;
-        link.href = capturedOriginal.canvas.toDataURL();
-        link.click();
+    // 현재 프리뷰 화면(원본)을 바로 캡처해서 저장
+    if (!video || !isVideoReady) {
+        alert('카메라가 준비되지 않았습니다.');
+        return;
     }
+    
+    // 실제 비디오 크기 가져오기
+    const videoWidth = video.elt.videoWidth || video.width;
+    const videoHeight = video.elt.videoHeight || video.height;
+    
+    // 원본만 캡처 (오버레이 없음)
+    const originalCanvas = createGraphics(videoWidth, videoHeight);
+    originalCanvas.push();
+    originalCanvas.scale(-1, 1);
+    originalCanvas.image(video, -videoWidth, 0, videoWidth, videoHeight);
+    originalCanvas.pop();
+    
+    // 바로 다운로드
+    const link = document.createElement('a');
+    link.download = `original-photo-${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.png`;
+    link.href = originalCanvas.canvas.toDataURL();
+    link.click();
 }
 
 function addPhotoToGallery(imageCanvas, type = 'filtered') {
