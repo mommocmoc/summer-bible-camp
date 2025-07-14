@@ -19,8 +19,10 @@ let debugMode = false;
 // 조정 가능한 변수들
 let hatOffset = 0; // UI 표시용 (실제로는 -100px 오프셋이 적용됨)
 let hatSize = 100;
+let hatOpacity = 100;
 let apronOffset = 0;
 let apronSize = 120;
+let apronOpacity = 100;
 
 // 캡처된 이미지들
 let capturedWithFilters = null;
@@ -420,6 +422,9 @@ function drawChefHat(nose) {
     // 실제 오프셋 계산 (UI의 0 = 실제 -100px)
     const actualHatOffset = hatOffset - 100;
     
+    // 투명도 계산 (100% = 255, 10% = 25.5)
+    const hatAlpha = (hatOpacity / 100) * 255;
+    
     // 이미지가 로드되고 유효한 경우
     if (chefHatImg && chefHatImg.width > 0) {
         const hatWidth = 120 * (hatSize / 100);
@@ -428,13 +433,13 @@ function drawChefHat(nose) {
         const hatY = nose.y - hatHeight + actualHatOffset;
         
         push();
-        tint(255, 220);
+        tint(255, hatAlpha);
         image(chefHatImg, hatX, hatY, hatWidth, hatHeight);
         pop();
     } else {
         // Fallback: 기본 도형으로 그리기
-        fill(255, 255, 255, 200);
-        stroke(200);
+        fill(255, 255, 255, hatAlpha * 0.8);
+        stroke(200, hatAlpha);
         strokeWeight(2);
         
         const hatWidth = 100 * (hatSize / 100);
@@ -446,7 +451,7 @@ function drawChefHat(nose) {
         ellipse(mirroredX, hatY + 20, hatWidth, 40);
         rect(hatX + 20, hatY, hatWidth - 40, 50);
         
-        fill(0);
+        fill(0, hatAlpha);
         textAlign(CENTER, CENTER);
         textSize(16);
         text('👨‍🍳', mirroredX, hatY + 25);
@@ -456,6 +461,9 @@ function drawChefHat(nose) {
 function drawApron(leftShoulder, rightShoulder) {
     const mirroredLeftX = width - leftShoulder.x;
     const mirroredRightX = width - rightShoulder.x;
+    
+    // 투명도 계산 (100% = 255, 10% = 25.5)
+    const apronAlpha = (apronOpacity / 100) * 255;
     
     // 이미지가 로드되고 유효한 경우
     if (apronImg && apronImg.width > 0) {
@@ -468,7 +476,7 @@ function drawApron(leftShoulder, rightShoulder) {
         const apronY = shoulderMidY + apronOffset;
         
         push();
-        tint(255, 220);
+        tint(255, apronAlpha);
         image(apronImg, apronX, apronY, apronWidth, apronHeight);
         pop();
     } else {
@@ -476,8 +484,8 @@ function drawApron(leftShoulder, rightShoulder) {
         const shoulderMidX = (mirroredLeftX + mirroredRightX) / 2;
         const shoulderMidY = (leftShoulder.y + rightShoulder.y) / 2;
         
-        fill(255, 255, 255, 180);
-        stroke(200);
+        fill(255, 255, 255, apronAlpha * 0.7);
+        stroke(200, apronAlpha);
         strokeWeight(2);
         
         const apronWidth = Math.abs(mirroredLeftX - mirroredRightX) * (apronSize / 100);
@@ -493,7 +501,7 @@ function drawApron(leftShoulder, rightShoulder) {
         line(mirroredLeftX, leftShoulder.y, apronX + 20, neckStrapY);
         line(mirroredRightX, rightShoulder.y, apronX + apronWidth - 20, neckStrapY);
         
-        fill(0);
+        fill(0, apronAlpha);
         textAlign(CENTER, CENTER);
         textSize(16);
         text('🍳', shoulderMidX, apronY + apronHeight / 3);
@@ -575,6 +583,9 @@ function drawChefHatOnCanvas(canvas, nose, scaleX = 1, scaleY = 1) {
     // 실제 오프셋 계산 (UI의 0 = 실제 -100px)
     const actualHatOffset = hatOffset - 100;
     
+    // 투명도 계산 (100% = 255, 10% = 25.5)
+    const hatAlpha = (hatOpacity / 100) * 255;
+    
     // 이미지가 로드되고 유효한 경우
     if (chefHatImg && chefHatImg.width > 0) {
         const hatWidth = 120 * (hatSize / 100) * scaleX;
@@ -583,13 +594,13 @@ function drawChefHatOnCanvas(canvas, nose, scaleX = 1, scaleY = 1) {
         const hatY = nose.y - hatHeight + (actualHatOffset * scaleY);
         
         canvas.push();
-        canvas.tint(255, 220);
+        canvas.tint(255, hatAlpha);
         canvas.image(chefHatImg, hatX, hatY, hatWidth, hatHeight);
         canvas.pop();
     } else {
         // Fallback: 기본 도형으로 그리기
-        canvas.fill(255, 255, 255, 200);
-        canvas.stroke(200);
+        canvas.fill(255, 255, 255, hatAlpha * 0.8);
+        canvas.stroke(200, hatAlpha);
         canvas.strokeWeight(2 * Math.max(scaleX, scaleY));
         
         const hatWidth = 100 * (hatSize / 100) * scaleX;
@@ -601,7 +612,7 @@ function drawChefHatOnCanvas(canvas, nose, scaleX = 1, scaleY = 1) {
         canvas.ellipse(nose.x, hatY + 20 * scaleY, hatWidth, 40 * scaleY);
         canvas.rect(hatX + 20 * scaleX, hatY, hatWidth - 40 * scaleX, 50 * scaleY);
         
-        canvas.fill(0);
+        canvas.fill(0, hatAlpha);
         canvas.textAlign(CENTER, CENTER);
         canvas.textSize(16 * Math.max(scaleX, scaleY));
         canvas.text('👨‍🍳', nose.x, hatY + 25 * scaleY);
@@ -612,6 +623,9 @@ function drawApronOnCanvas(canvas, leftShoulder, rightShoulder, scaleX = 1, scal
     const shoulderMidX = (leftShoulder.x + rightShoulder.x) / 2;
     const shoulderMidY = (leftShoulder.y + rightShoulder.y) / 2;
     
+    // 투명도 계산 (100% = 255, 10% = 25.5)
+    const apronAlpha = (apronOpacity / 100) * 255;
+    
     // 이미지가 로드되고 유효한 경우
     if (apronImg && apronImg.width > 0) {
         const apronWidth = Math.abs(leftShoulder.x - rightShoulder.x) * (apronSize / 100) * 1.5;
@@ -620,13 +634,13 @@ function drawApronOnCanvas(canvas, leftShoulder, rightShoulder, scaleX = 1, scal
         const apronY = shoulderMidY + (apronOffset * scaleY);
         
         canvas.push();
-        canvas.tint(255, 220);
+        canvas.tint(255, apronAlpha);
         canvas.image(apronImg, apronX, apronY, apronWidth, apronHeight);
         canvas.pop();
     } else {
         // Fallback: 기본 도형으로 그리기
-        canvas.fill(255, 255, 255, 180);
-        canvas.stroke(200);
+        canvas.fill(255, 255, 255, apronAlpha * 0.7);
+        canvas.stroke(200, apronAlpha);
         canvas.strokeWeight(2 * Math.max(scaleX, scaleY));
         
         const apronWidth = Math.abs(leftShoulder.x - rightShoulder.x) * (apronSize / 100);
@@ -642,7 +656,7 @@ function drawApronOnCanvas(canvas, leftShoulder, rightShoulder, scaleX = 1, scal
         canvas.line(leftShoulder.x, leftShoulder.y, apronX + 20 * scaleX, neckStrapY);
         canvas.line(rightShoulder.x, rightShoulder.y, apronX + apronWidth - 20 * scaleX, neckStrapY);
         
-        canvas.fill(0);
+        canvas.fill(0, apronAlpha);
         canvas.textAlign(CENTER, CENTER);
         canvas.textSize(16 * Math.max(scaleX, scaleY));
         canvas.text('🍳', shoulderMidX, apronY + apronHeight / 3);
@@ -760,6 +774,14 @@ function setupAdjustmentControls() {
         hatSizeValue.textContent = hatSize;
     });
     
+    // 모자 투명도 조정
+    const hatOpacitySlider = document.getElementById('hat-opacity');
+    const hatOpacityValue = document.getElementById('hat-opacity-value');
+    hatOpacitySlider.addEventListener('input', (e) => {
+        hatOpacity = parseInt(e.target.value);
+        hatOpacityValue.textContent = hatOpacity;
+    });
+    
     // 앞치마 위치 조정
     const apronOffsetSlider = document.getElementById('apron-offset');
     const apronOffsetValue = document.getElementById('apron-offset-value');
@@ -774,6 +796,14 @@ function setupAdjustmentControls() {
     apronSizeSlider.addEventListener('input', (e) => {
         apronSize = parseInt(e.target.value);
         apronSizeValue.textContent = apronSize;
+    });
+    
+    // 앞치마 투명도 조정
+    const apronOpacitySlider = document.getElementById('apron-opacity');
+    const apronOpacityValue = document.getElementById('apron-opacity-value');
+    apronOpacitySlider.addEventListener('input', (e) => {
+        apronOpacity = parseInt(e.target.value);
+        apronOpacityValue.textContent = apronOpacity;
     });
 }
 
