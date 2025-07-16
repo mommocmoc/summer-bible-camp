@@ -16,6 +16,11 @@ let showApron = true;
 let showBackground = true;
 let debugMode = false;
 
+// 데코레이션 이미지들
+let decoImages = [];
+let showDecorations = true;
+let decorationPositions = [];
+
 // 조정 가능한 변수들
 let hatOffset = 0; // UI 표시용 (실제로는 -100px 오프셋이 적용됨)
 let hatSize = 100;
@@ -92,10 +97,28 @@ function preload() {
                 apronImg = null;
             }
         );
+        
+        // 데코레이션 이미지들 로드 (deco1~6)
+        decoImages = [];
+        for (let i = 1; i <= 6; i++) {
+            const decoPath = `./assets/deco${i}.png`;
+            loadImage(decoPath, 
+                (img) => {
+                    decoImages[i-1] = img;
+                    console.log(`✅ Deco${i} image loaded successfully`);
+                    console.log(`Deco${i} dimensions:`, img.width, 'x', img.height);
+                },
+                () => {
+                    console.warn(`❌ Deco${i} image failed to load, using fallback`);
+                    decoImages[i-1] = null;
+                }
+            );
+        }
     } catch (error) {
         console.error('❌ Error loading images:', error);
         chefHatImg = null;
         apronImg = null;
+        decoImages = [];
     }
 }
 
@@ -113,6 +136,9 @@ function setup() {
     
     // 윈도우 리사이즈 이벤트 리스너
     window.addEventListener('resize', handleWindowResize);
+    
+    // 데코레이션 초기화
+    initializeDecorations();
     
     // ML5.js v1.2.1 API 사용
     try {
@@ -285,6 +311,9 @@ function setupUI() {
     document.getElementById('debug-mode').addEventListener('change', (e) => {
         debugMode = e.target.checked;
     });
+    document.getElementById('show-decorations').addEventListener('change', (e) => {
+        showDecorations = e.target.checked;
+    });
     
     // 조정 컨트롤 이벤트 리스너
     setupAdjustmentControls();
@@ -293,6 +322,10 @@ function setupUI() {
     document.getElementById('capture-original').addEventListener('click', captureOriginalPhoto);
     document.getElementById('capture-both').addEventListener('click', captureBothPhotos);
     document.getElementById('download-original').addEventListener('click', downloadOriginalPhoto);
+    
+    // 데코레이션 관리 버튼 이벤트 리스너
+    document.getElementById('randomize-decorations').addEventListener('click', randomizeDecorationPositions);
+    document.getElementById('reset-decorations').addEventListener('click', resetDecorationPositions);
     
     // 키보드 단축키 이벤트 리스너
     setupKeyboardShortcuts();
@@ -384,6 +417,9 @@ function drawBackground() {
         text('🥄', 20, height - 60);
         text('🍽️', width - 80, height - 60);
     }
+    
+    // 데코레이션 렌더링 (비디오 레이어 아래)
+    drawDecorations();
 }
 
 function drawPose() {
@@ -737,6 +773,9 @@ function drawBackgroundOnCanvas(canvas, canvasWidth = CANVAS_WIDTH, canvasHeight
     canvas.text('👨‍🍳', canvasWidth - 80 * scaleX, 20 * scaleY);
     canvas.text('🥄', 20 * scaleX, canvasHeight - 60 * scaleY);
     canvas.text('🍽️', canvasWidth - 80 * scaleX, canvasHeight - 60 * scaleY);
+    
+    // 데코레이션 렌더링 (캡처용)
+    drawDecorationsOnCanvas(canvas, scaleX, scaleY);
 }
 
 function drawWatermarkOnCanvas(canvas, canvasWidth = CANVAS_WIDTH, canvasHeight = CANVAS_HEIGHT) {
@@ -1191,7 +1230,295 @@ function handleWindowResize() {
             captureCanvas = createGraphics(CANVAS_WIDTH, CANVAS_HEIGHT);
         }
         console.log(`Canvas resized to: ${CANVAS_WIDTH}x${CANVAS_HEIGHT}`);
+        
+        // 데코레이션 위치 재조정
+        rescaleDecorations(oldWidth, oldHeight);
     }
+}
+
+// 데코레이션 시스템 함수들
+function initializeDecorations() {
+    // 로컬스토리지에서 저장된 위치 불러오기
+    const savedPositions = localStorage.getItem('decorationPositions');
+    if (savedPositions) {
+        try {
+            decorationPositions = JSON.parse(savedPositions);
+            console.log('✅ Decoration positions loaded from localStorage');
+        } catch (error) {
+            console.warn('❌ Failed to load decoration positions from localStorage');
+            randomizeDecorationPositions();
+        }
+    } else {
+        randomizeDecorationPositions();
+    }
+}
+
+function randomizeDecorationPositions() {
+    decorationPositions = [];
+    
+    // 중앙 영역 정의 (가로 30%, 세로 40%)
+    const centerX = CANVAS_WIDTH / 2;
+    const centerY = CANVAS_HEIGHT / 2;
+    const avoidWidth = CANVAS_WIDTH * 0.3;
+    const avoidHeight = CANVAS_HEIGHT * 0.4;
+    
+    for (let i = 0; i < 6; i++) {
+        let attempts = 0;
+        let position;
+        
+        do {
+            // 기본 크기 설정 (50~80% 사이)
+            const scale = random(0.5, 0.8);
+            const baseSize = 60; // 기본 크기
+            const size = baseSize * scale;
+            
+            // 랜덤 위치 생성
+            position = {
+                id: i,
+                x: random(size, CANVAS_WIDTH - size),
+                y: random(size, CANVAS_HEIGHT - size),
+                scale: scale,
+                rotation: random(0, TWO_PI),
+                imageIndex: i,
+                isDragging: false,
+                enabled: true,
+                opacity: random(0.7, 1.0)
+            };
+            
+            attempts++;
+        } while (isInCenterArea(position, centerX, centerY, avoidWidth, avoidHeight) && attempts < 50);
+        
+        decorationPositions.push(position);
+    }
+    
+    console.log('✅ Decoration positions randomized');
+    saveDecorationPositions();
+}
+
+function isInCenterArea(position, centerX, centerY, avoidWidth, avoidHeight) {
+    return (
+        position.x > centerX - avoidWidth / 2 && 
+        position.x < centerX + avoidWidth / 2 && 
+        position.y > centerY - avoidHeight / 2 && 
+        position.y < centerY + avoidHeight / 2
+    );
+}
+
+function rescaleDecorations(oldWidth, oldHeight) {
+    const scaleX = CANVAS_WIDTH / oldWidth;
+    const scaleY = CANVAS_HEIGHT / oldHeight;
+    
+    decorationPositions.forEach(deco => {
+        deco.x *= scaleX;
+        deco.y *= scaleY;
+        // 위치가 경계를 벗어나지 않도록 조정
+        deco.x = constrain(deco.x, 0, CANVAS_WIDTH);
+        deco.y = constrain(deco.y, 0, CANVAS_HEIGHT);
+    });
+    
+    saveDecorationPositions();
+}
+
+function saveDecorationPositions() {
+    try {
+        localStorage.setItem('decorationPositions', JSON.stringify(decorationPositions));
+    } catch (error) {
+        console.warn('❌ Failed to save decoration positions to localStorage');
+    }
+}
+
+function resetDecorationPositions() {
+    // 로컬스토리지에서 제거
+    localStorage.removeItem('decorationPositions');
+    // 새로운 랜덤 위치 생성
+    randomizeDecorationPositions();
+    console.log('✅ Decoration positions reset');
+}
+
+// 드래그 앤 드롭 인터랙션
+let selectedDecoration = null;
+let dragOffset = { x: 0, y: 0 };
+
+function mousePressed() {
+    if (!showDecorations) return;
+    
+    // 데코레이션 클릭 감지 (역순으로 체크하여 위쪽 요소가 우선)
+    for (let i = decorationPositions.length - 1; i >= 0; i--) {
+        const deco = decorationPositions[i];
+        if (!deco.enabled) continue;
+        
+        const img = decoImages[deco.imageIndex];
+        if (!img) continue;
+        
+        const size = 60 * deco.scale;
+        const halfSize = size / 2;
+        
+        // 마우스가 데코레이션 영역 내에 있는지 확인
+        if (mouseX >= deco.x - halfSize && mouseX <= deco.x + halfSize &&
+            mouseY >= deco.y - halfSize && mouseY <= deco.y + halfSize) {
+            
+            selectedDecoration = deco;
+            deco.isDragging = true;
+            dragOffset.x = mouseX - deco.x;
+            dragOffset.y = mouseY - deco.y;
+            
+            // 선택된 데코레이션을 맨 위로 이동
+            decorationPositions.splice(i, 1);
+            decorationPositions.push(deco);
+            
+            break;
+        }
+    }
+}
+
+function mouseDragged() {
+    if (selectedDecoration && selectedDecoration.isDragging) {
+        selectedDecoration.x = mouseX - dragOffset.x;
+        selectedDecoration.y = mouseY - dragOffset.y;
+        
+        // 경계 체크
+        const size = 60 * selectedDecoration.scale;
+        const halfSize = size / 2;
+        selectedDecoration.x = constrain(selectedDecoration.x, halfSize, CANVAS_WIDTH - halfSize);
+        selectedDecoration.y = constrain(selectedDecoration.y, halfSize, CANVAS_HEIGHT - halfSize);
+    }
+}
+
+function mouseReleased() {
+    if (selectedDecoration) {
+        selectedDecoration.isDragging = false;
+        selectedDecoration = null;
+        saveDecorationPositions();
+    }
+}
+
+// 터치 이벤트 (모바일 지원)
+function touchStarted() {
+    if (touches.length === 1) {
+        // 터치 좌표를 마우스 좌표로 변환
+        mouseX = touches[0].x;
+        mouseY = touches[0].y;
+        mousePressed();
+        return false; // 기본 터치 동작 방지
+    }
+}
+
+function touchMoved() {
+    if (touches.length === 1 && selectedDecoration) {
+        mouseX = touches[0].x;
+        mouseY = touches[0].y;
+        mouseDragged();
+        return false; // 스크롤 방지
+    }
+}
+
+function touchEnded() {
+    mouseReleased();
+    return false;
+}
+
+// 데코레이션 렌더링 함수
+function drawDecorations() {
+    if (!showDecorations) return;
+    
+    decorationPositions.forEach((deco, index) => {
+        if (!deco.enabled) return;
+        
+        const img = decoImages[deco.imageIndex];
+        if (!img) {
+            // 이미지 로드 실패 시 fallback 이모지 표시
+            drawDecorationFallback(deco, index);
+            return;
+        }
+        
+        const size = 60 * deco.scale;
+        const alpha = deco.opacity * 255;
+        
+        // 드래그 중인 데코레이션은 반투명 처리
+        const finalAlpha = deco.isDragging ? alpha * 0.7 : alpha;
+        
+        push();
+        translate(deco.x, deco.y);
+        rotate(deco.rotation);
+        tint(255, finalAlpha);
+        
+        // 드래그 중인 데코레이션에 하이라이트 효과
+        if (deco.isDragging) {
+            fill(255, 255, 0, 50);
+            stroke(255, 255, 0, 100);
+            strokeWeight(3);
+            ellipse(0, 0, size + 10, size + 10);
+        }
+        
+        imageMode(CENTER);
+        image(img, 0, 0, size, size);
+        pop();
+    });
+}
+
+function drawDecorationFallback(deco, index) {
+    const size = 60 * deco.scale;
+    const alpha = deco.opacity * 255;
+    const finalAlpha = deco.isDragging ? alpha * 0.7 : alpha;
+    
+    // 기본 이모지들
+    const fallbackEmojis = ['🌟', '🎈', '🌈', '🎀', '🎨', '🎭'];
+    const emoji = fallbackEmojis[index % fallbackEmojis.length];
+    
+    push();
+    translate(deco.x, deco.y);
+    rotate(deco.rotation);
+    
+    // 드래그 중인 데코레이션에 하이라이트 효과
+    if (deco.isDragging) {
+        fill(255, 255, 0, 50);
+        stroke(255, 255, 0, 100);
+        strokeWeight(3);
+        ellipse(0, 0, size + 10, size + 10);
+    }
+    
+    fill(255, 255, 255, finalAlpha);
+    textAlign(CENTER, CENTER);
+    textSize(size * 0.8);
+    text(emoji, 0, 0);
+    pop();
+}
+
+// 캔버스용 데코레이션 렌더링 함수
+function drawDecorationsOnCanvas(canvas, scaleX = 1, scaleY = 1) {
+    if (!showDecorations) return;
+    
+    decorationPositions.forEach((deco, index) => {
+        if (!deco.enabled) return;
+        
+        const img = decoImages[deco.imageIndex];
+        const size = 60 * deco.scale * Math.max(scaleX, scaleY);
+        const alpha = deco.opacity * 255;
+        
+        // 스케일된 좌표
+        const scaledX = deco.x * scaleX;
+        const scaledY = deco.y * scaleY;
+        
+        canvas.push();
+        canvas.translate(scaledX, scaledY);
+        canvas.rotate(deco.rotation);
+        
+        if (img) {
+            canvas.tint(255, alpha);
+            canvas.imageMode(CENTER);
+            canvas.image(img, 0, 0, size, size);
+        } else {
+            // 이미지 로드 실패 시 fallback 이모지 표시
+            const fallbackEmojis = ['🌟', '🎈', '🌈', '🎀', '🎨', '🎭'];
+            const emoji = fallbackEmojis[index % fallbackEmojis.length];
+            
+            canvas.fill(255, 255, 255, alpha);
+            canvas.textAlign(CENTER, CENTER);
+            canvas.textSize(size * 0.8);
+            canvas.text(emoji, 0, 0);
+        }
+        canvas.pop();
+    });
 }
 
 
