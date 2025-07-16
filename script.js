@@ -32,8 +32,41 @@ let capturedOriginal = null;
 let photoGallery = [];
 
 
-const CANVAS_WIDTH = 640;
-const CANVAS_HEIGHT = 480;
+let CANVAS_WIDTH = 640;
+let CANVAS_HEIGHT = 480;
+
+function calculateResponsiveCanvasSize() {
+    const isMobile = window.innerWidth <= 768;
+    
+    if (isMobile) {
+        // 모바일: 화면 너비의 90% 사용, 4:3 비율 유지
+        const maxWidth = window.innerWidth * 0.9;
+        const maxHeight = window.innerHeight * 0.4; // 화면 높이의 40% 제한
+        
+        // 4:3 비율로 계산
+        let width = maxWidth;
+        let height = (maxWidth * 3) / 4;
+        
+        // 높이가 너무 크면 높이 기준으로 재계산
+        if (height > maxHeight) {
+            height = maxHeight;
+            width = (height * 4) / 3;
+        }
+        
+        // 최소 크기 보장
+        width = Math.max(width, 320);
+        height = Math.max(height, 240);
+        
+        CANVAS_WIDTH = Math.round(width);
+        CANVAS_HEIGHT = Math.round(height);
+    } else {
+        // 데스크톱: 기존 크기 유지
+        CANVAS_WIDTH = 640;
+        CANVAS_HEIGHT = 480;
+    }
+    
+    console.log(`Canvas size set to: ${CANVAS_WIDTH}x${CANVAS_HEIGHT}`);
+}
 
 function preload() {
     // GitHub Pages 호환성을 위한 에셋 로딩
@@ -67,6 +100,9 @@ function preload() {
 }
 
 function setup() {
+    // 반응형 캔버스 크기 계산
+    calculateResponsiveCanvasSize();
+    
     canvas = createCanvas(CANVAS_WIDTH, CANVAS_HEIGHT);
     canvas.parent('canvas-container');
     
@@ -74,6 +110,9 @@ function setup() {
     
     setupCamera();
     setupUI();
+    
+    // 윈도우 리사이즈 이벤트 리스너
+    window.addEventListener('resize', handleWindowResize);
     
     // ML5.js v1.2.1 API 사용
     try {
@@ -254,6 +293,9 @@ function setupUI() {
     document.getElementById('capture-original').addEventListener('click', captureOriginalPhoto);
     document.getElementById('capture-both').addEventListener('click', captureBothPhotos);
     document.getElementById('download-original').addEventListener('click', downloadOriginalPhoto);
+    
+    // 키보드 단축키 이벤트 리스너
+    setupKeyboardShortcuts();
 }
 
 async function switchCamera() {
@@ -573,6 +615,9 @@ function capturePhoto() {
         }
     }
     
+    // 워터마크 추가 (필터가 적용된 사진에만)
+    drawWatermarkOnCanvas(tempCanvas, videoWidth, videoHeight);
+    
     // 전역 변수에 저장 (다운로드용)
     capturedWithFilters = tempCanvas;
     
@@ -694,6 +739,42 @@ function drawBackgroundOnCanvas(canvas, canvasWidth = CANVAS_WIDTH, canvasHeight
     canvas.text('🍽️', canvasWidth - 80 * scaleX, canvasHeight - 60 * scaleY);
 }
 
+function drawWatermarkOnCanvas(canvas, canvasWidth = CANVAS_WIDTH, canvasHeight = CANVAS_HEIGHT) {
+    const scaleX = canvasWidth / CANVAS_WIDTH;
+    const scaleY = canvasHeight / CANVAS_HEIGHT;
+    
+    // 워터마크 텍스트
+    const watermarkText = "2025 수지 기쁨의 교회 여름 성경 학교";
+    
+    // 텍스트 크기와 위치 계산
+    const fontSize = Math.max(12, 14 * Math.min(scaleX, scaleY));
+    const padding = Math.max(8, 10 * Math.min(scaleX, scaleY));
+    
+    // 반투명 배경
+    canvas.push();
+    canvas.fill(0, 0, 0, 120);
+    canvas.noStroke();
+    
+    // 텍스트 크기 측정을 위한 임시 설정
+    canvas.textAlign(CENTER, CENTER);
+    canvas.textSize(fontSize);
+    const textWidth = canvas.textWidth(watermarkText);
+    const textHeight = fontSize;
+    
+    // 하단 중앙에 배경 박스 그리기
+    const boxWidth = textWidth + (padding * 2);
+    const boxHeight = textHeight + (padding * 1.5);
+    const x = canvasWidth / 2;
+    const y = canvasHeight - boxHeight / 2 - padding;
+    
+    canvas.rect(x - boxWidth / 2, y - boxHeight / 2, boxWidth, boxHeight, 5 * Math.min(scaleX, scaleY));
+    
+    // 텍스트 그리기
+    canvas.fill(255, 255, 255, 200);
+    canvas.text(watermarkText, x, y);
+    canvas.pop();
+}
+
 function downloadPhoto() {
     // 현재 프리뷰 화면(필터 포함)을 바로 캡처해서 저장
     if (!video || !isVideoReady) {
@@ -750,6 +831,9 @@ function downloadPhoto() {
             drawApronOnCanvas(tempCanvas, scaledLeftShoulder, scaledRightShoulder, scaleX, scaleY);
         }
     }
+    
+    // 워터마크 추가 (필터가 적용된 사진에만)
+    drawWatermarkOnCanvas(tempCanvas, videoWidth, videoHeight);
     
     // 바로 다운로드
     const link = document.createElement('a');
@@ -887,6 +971,9 @@ function captureBothPhotos() {
             drawApronOnCanvas(tempCanvas, scaledLeftShoulder, scaledRightShoulder, scaleX, scaleY);
         }
     }
+    
+    // 워터마크 추가 (필터가 적용된 사진에만)
+    drawWatermarkOnCanvas(tempCanvas, videoWidth, videoHeight);
     
     capturedWithFilters = tempCanvas;
     addPhotoToGallery(tempCanvas, 'filtered');
@@ -1062,6 +1149,48 @@ async function downloadAllPhotos() {
         const downloadBtn = document.getElementById('download-all');
         downloadBtn.innerHTML = '📦 모든 사진 다운로드 (ZIP)';
         downloadBtn.disabled = false;
+    }
+}
+
+function setupKeyboardShortcuts() {
+    document.addEventListener('keydown', function(event) {
+        // 스페이스바 (키코드 32 또는 ' ')
+        if (event.code === 'Space' || event.key === ' ') {
+            // input 요소에 포커스가 있거나 다른 요소에서 입력 중이 아닐 때만 실행
+            if (event.target.tagName !== 'INPUT' && event.target.tagName !== 'TEXTAREA') {
+                event.preventDefault(); // 페이지 스크롤 방지
+                
+                // 카메라가 준비되었는지 확인
+                if (video && isVideoReady) {
+                    captureBothPhotos();
+                    
+                    // 버튼 시각적 피드백 (잠깐 active 상태 표시)
+                    const captureBtn = document.getElementById('capture-both');
+                    captureBtn.classList.add('active');
+                    setTimeout(() => {
+                        captureBtn.classList.remove('active');
+                    }, 200);
+                }
+            }
+        }
+    });
+}
+
+function handleWindowResize() {
+    // 리사이즈 시 캔버스 크기 재계산
+    const oldWidth = CANVAS_WIDTH;
+    const oldHeight = CANVAS_HEIGHT;
+    
+    calculateResponsiveCanvasSize();
+    
+    // 크기가 변경되었다면 캔버스 업데이트
+    if (oldWidth !== CANVAS_WIDTH || oldHeight !== CANVAS_HEIGHT) {
+        resizeCanvas(CANVAS_WIDTH, CANVAS_HEIGHT);
+        if (captureCanvas) {
+            captureCanvas.remove();
+            captureCanvas = createGraphics(CANVAS_WIDTH, CANVAS_HEIGHT);
+        }
+        console.log(`Canvas resized to: ${CANVAS_WIDTH}x${CANVAS_HEIGHT}`);
     }
 }
 
