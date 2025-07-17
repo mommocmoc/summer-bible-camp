@@ -123,6 +123,8 @@ function preload() {
 }
 
 function setup() {
+    console.log('🚀 P5.js setup() called!');
+    
     // 반응형 캔버스 크기 계산
     calculateResponsiveCanvasSize();
     
@@ -138,7 +140,9 @@ function setup() {
     window.addEventListener('resize', handleWindowResize);
     
     // 데코레이션 초기화
+    console.log('About to initialize decorations...');
     initializeDecorations();
+    console.log('Decorations initialized. Count:', decorationPositions.length);
     
     // ML5.js v1.2.1 API 사용
     try {
@@ -351,12 +355,25 @@ async function onCameraSelect(event) {
 }
 
 function draw() {
+    if (frameCount === 1) {
+        console.log('🎬 First draw() call');
+    }
+    
     if (!video || !isVideoReady) {
         background(220);
         fill(100);
         textAlign(CENTER, CENTER);
         textSize(16);
         text('카메라 로딩 중...', width/2, height/2);
+        
+        // 카메라 로딩 중에도 데코레이션 테스트
+        if (frameCount % 60 === 0) { // 1초마다
+            console.log('Camera loading... decoration count:', decorationPositions.length);
+        }
+        
+        // 카메라 로딩 중에도 데코레이션 렌더링 테스트
+        drawDecorations();
+        
         return;
     }
     
@@ -388,6 +405,9 @@ function draw() {
     
     drawPose();
     drawOverlays();
+    
+    // 데코레이션은 비디오 위에 그려야 함
+    drawDecorations();
 }
 
 function drawBackground() {
@@ -418,8 +438,6 @@ function drawBackground() {
         text('🍽️', width - 80, height - 60);
     }
     
-    // 데코레이션 렌더링 (비디오 레이어 아래)
-    drawDecorations();
 }
 
 function drawPose() {
@@ -650,6 +668,11 @@ function capturePhoto() {
             drawApronOnCanvas(tempCanvas, scaledLeftShoulder, scaledRightShoulder, scaleX, scaleY);
         }
     }
+    
+    // 데코레이션 추가
+    const scaleX = videoWidth / CANVAS_WIDTH;
+    const scaleY = videoHeight / CANVAS_HEIGHT;
+    drawDecorationsOnCanvas(tempCanvas, scaleX, scaleY);
     
     // 워터마크 추가 (필터가 적용된 사진에만)
     drawWatermarkOnCanvas(tempCanvas, videoWidth, videoHeight);
@@ -979,11 +1002,13 @@ function captureBothPhotos() {
     tempCanvas.image(video, -videoWidth, 0, videoWidth, videoHeight);
     tempCanvas.pop();
     
+    // 스케일 계산 (데코레이션에서도 사용)
+    const scaleX = videoWidth / CANVAS_WIDTH;
+    const scaleY = videoHeight / CANVAS_HEIGHT;
+    
     // 오버레이 추가 (좌표 스케일링)
     if (poses.length > 0) {
         const pose = poses[0];
-        const scaleX = videoWidth / CANVAS_WIDTH;
-        const scaleY = videoHeight / CANVAS_HEIGHT;
         
         const nose = pose.keypoints.find(kp => kp.name === 'nose');
         const leftShoulder = pose.keypoints.find(kp => kp.name === 'left_shoulder');
@@ -1010,6 +1035,9 @@ function captureBothPhotos() {
             drawApronOnCanvas(tempCanvas, scaledLeftShoulder, scaledRightShoulder, scaleX, scaleY);
         }
     }
+    
+    // 데코레이션 추가
+    drawDecorationsOnCanvas(tempCanvas, scaleX, scaleY);
     
     // 워터마크 추가 (필터가 적용된 사진에만)
     drawWatermarkOnCanvas(tempCanvas, videoWidth, videoHeight);
@@ -1238,19 +1266,24 @@ function handleWindowResize() {
 
 // 데코레이션 시스템 함수들
 function initializeDecorations() {
+    console.log('🎨 Initializing decorations...');
+    
     // 로컬스토리지에서 저장된 위치 불러오기
     const savedPositions = localStorage.getItem('decorationPositions');
     if (savedPositions) {
         try {
             decorationPositions = JSON.parse(savedPositions);
-            console.log('✅ Decoration positions loaded from localStorage');
+            console.log('✅ Decoration positions loaded from localStorage:', decorationPositions.length);
         } catch (error) {
             console.warn('❌ Failed to load decoration positions from localStorage');
             randomizeDecorationPositions();
         }
     } else {
+        console.log('No saved positions found, generating random positions');
         randomizeDecorationPositions();
     }
+    
+    console.log('Canvas dimensions for decorations:', CANVAS_WIDTH, 'x', CANVAS_HEIGHT);
 }
 
 function randomizeDecorationPositions() {
@@ -1261,6 +1294,9 @@ function randomizeDecorationPositions() {
     const centerY = CANVAS_HEIGHT / 2;
     const avoidWidth = CANVAS_WIDTH * 0.3;
     const avoidHeight = CANVAS_HEIGHT * 0.4;
+    
+    console.log('🎲 Randomizing decorations for canvas:', CANVAS_WIDTH, 'x', CANVAS_HEIGHT);
+    console.log('Center avoid area:', avoidWidth, 'x', avoidHeight, 'at', centerX, centerY);
     
     for (let i = 0; i < 6; i++) {
         let attempts = 0;
@@ -1279,6 +1315,7 @@ function randomizeDecorationPositions() {
                 y: random(size, CANVAS_HEIGHT - size),
                 scale: scale,
                 rotation: random(0, TWO_PI),
+                rotationSpeed: random(0.01, 0.03) * (random() > 0.5 ? 1 : -1), // 빠른 회전 속도, 왼쪽/오른쪽 랜덤
                 imageIndex: i,
                 isDragging: false,
                 enabled: true,
@@ -1289,9 +1326,10 @@ function randomizeDecorationPositions() {
         } while (isInCenterArea(position, centerX, centerY, avoidWidth, avoidHeight) && attempts < 50);
         
         decorationPositions.push(position);
+        console.log(`Deco ${i}: x=${Math.round(position.x)}, y=${Math.round(position.y)}, scale=${position.scale.toFixed(2)}`);
     }
     
-    console.log('✅ Decoration positions randomized');
+    console.log('✅ Decoration positions randomized:', decorationPositions.length, 'items');
     saveDecorationPositions();
 }
 
@@ -1350,7 +1388,7 @@ function mousePressed() {
         const img = decoImages[deco.imageIndex];
         if (!img) continue;
         
-        const size = 60 * deco.scale;
+        const size = 120 * deco.scale; // 크기를 2배로 증가
         const halfSize = size / 2;
         
         // 마우스가 데코레이션 영역 내에 있는지 확인
@@ -1419,10 +1457,30 @@ function touchEnded() {
 
 // 데코레이션 렌더링 함수
 function drawDecorations() {
-    if (!showDecorations) return;
+    if (!showDecorations) {
+        return;
+    }
+    
+    if (decorationPositions.length === 0) {
+        return;
+    }
+    
+    if (debugMode && frameCount % 60 === 0) { // 1초마다 한 번씩만 로그
+        console.log('Drawing decorations:', decorationPositions.length, 'positions');
+        console.log('Deco images loaded:', decoImages.filter(img => img !== null).length, '/ 6');
+    }
     
     decorationPositions.forEach((deco, index) => {
         if (!deco.enabled) return;
+        
+        // 항상 fallback을 먼저 그려서 위치가 맞는지 확인
+        if (debugMode) {
+            push();
+            fill(255, 0, 0, 100); // 빨간 원으로 위치 표시
+            noStroke();
+            ellipse(deco.x, deco.y, 20, 20);
+            pop();
+        }
         
         const img = decoImages[deco.imageIndex];
         if (!img) {
@@ -1431,27 +1489,49 @@ function drawDecorations() {
             return;
         }
         
-        const size = 60 * deco.scale;
+        const size = 120 * deco.scale; // 크기를 2배로 증가
         const alpha = deco.opacity * 255;
         
         // 드래그 중인 데코레이션은 반투명 처리
         const finalAlpha = deco.isDragging ? alpha * 0.7 : alpha;
         
+        // 드래그 중이 아니면 애니메이션 회전 적용
+        if (!deco.isDragging) {
+            deco.rotation += deco.rotationSpeed;
+        }
+        
         push();
         translate(deco.x, deco.y);
         rotate(deco.rotation);
-        tint(255, finalAlpha);
         
         // 드래그 중인 데코레이션에 하이라이트 효과
         if (deco.isDragging) {
+            noTint();
             fill(255, 255, 0, 50);
             stroke(255, 255, 0, 100);
             strokeWeight(3);
             ellipse(0, 0, size + 10, size + 10);
         }
         
+        // 이미지 렌더링 (비율 유지)
+        tint(255, finalAlpha);
         imageMode(CENTER);
-        image(img, 0, 0, size, size);
+        
+        // 이미지 비율 유지하면서 크기 조정
+        const aspectRatio = img.width / img.height;
+        let renderWidth = size;
+        let renderHeight = size;
+        
+        if (aspectRatio > 1) {
+            // 가로가 더 긴 경우
+            renderHeight = size / aspectRatio;
+        } else {
+            // 세로가 더 긴 경우
+            renderWidth = size * aspectRatio;
+        }
+        
+        image(img, 0, 0, renderWidth, renderHeight);
+        noTint(); // tint 초기화
         pop();
     });
 }
@@ -1464,6 +1544,11 @@ function drawDecorationFallback(deco, index) {
     // 기본 이모지들
     const fallbackEmojis = ['🌟', '🎈', '🌈', '🎀', '🎨', '🎭'];
     const emoji = fallbackEmojis[index % fallbackEmojis.length];
+    
+    // 드래그 중이 아니면 애니메이션 회전 적용
+    if (!deco.isDragging) {
+        deco.rotation += deco.rotationSpeed;
+    }
     
     push();
     translate(deco.x, deco.y);
@@ -1492,7 +1577,7 @@ function drawDecorationsOnCanvas(canvas, scaleX = 1, scaleY = 1) {
         if (!deco.enabled) return;
         
         const img = decoImages[deco.imageIndex];
-        const size = 60 * deco.scale * Math.max(scaleX, scaleY);
+        const size = 120 * deco.scale * Math.max(scaleX, scaleY); // 라이브 뷰와 동일한 크기
         const alpha = deco.opacity * 255;
         
         // 스케일된 좌표
@@ -1506,7 +1591,21 @@ function drawDecorationsOnCanvas(canvas, scaleX = 1, scaleY = 1) {
         if (img) {
             canvas.tint(255, alpha);
             canvas.imageMode(CENTER);
-            canvas.image(img, 0, 0, size, size);
+            
+            // 이미지 비율 유지하면서 크기 조정
+            const aspectRatio = img.width / img.height;
+            let renderWidth = size;
+            let renderHeight = size;
+            
+            if (aspectRatio > 1) {
+                // 가로가 더 긴 경우
+                renderHeight = size / aspectRatio;
+            } else {
+                // 세로가 더 긴 경우
+                renderWidth = size * aspectRatio;
+            }
+            
+            canvas.image(img, 0, 0, renderWidth, renderHeight);
         } else {
             // 이미지 로드 실패 시 fallback 이모지 표시
             const fallbackEmojis = ['🌟', '🎈', '🌈', '🎀', '🎨', '🎭'];
